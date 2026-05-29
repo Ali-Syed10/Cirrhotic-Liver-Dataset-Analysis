@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.450">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>scRNA-seq Fibrosis Dataset Analysis</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="Fibrosis_2_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Fibrosis_2_files/libs/quarto-html/quarto.js"></script>
+<script src="Fibrosis_2_files/libs/quarto-html/popper.min.js"></script>
+<script src="Fibrosis_2_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Fibrosis_2_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Fibrosis_2_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Fibrosis_2_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Fibrosis_2_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Fibrosis_2_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Fibrosis_2_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">scRNA-seq Fibrosis Dataset Analysis</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<section id="abstract" class="level3">
+<h3 class="anchored" data-anchor-id="abstract">Abstract</h3>
+<p>Currently there are no effective antifibrotic therapies for liver cirrhosis, a major killer worldwide. To obtain a cellular resolution of directly-relevant pathogenesis and to inform therapeutic design, we profile the transcriptomes of over 100,000 human single cells, yielding molecular definitions for non-parenchymal cell types present in healthy and cirrhotic human liver. We uncover a novel scar-associated TREM2<sup>+</sup>CD9<sup>+</sup> macrophage subpopulation, which expands in liver fibrosis, differentiates from circulating monocytes and is pro-fibrogenic. We also define novel ACKR1<sup>+</sup> and PLVAP<sup>+</sup> endothelial cells which expand in cirrhosis, are topographically scar-restricted and enhance leucocyte transmigration. Multi-lineage ligand-receptor modelling of interactions between the novel scar-associated macrophages, endothelial cells and PDGFRα<sup>+</sup> collagen-producing mesenchymal cells reveals intra-scar activity of several pro-fibrogenic pathways including TNFRSF12A, PDGFR and NOTCH signalling. Our work dissects unanticipated aspects of the cellular and molecular basis of human organ fibrosis at a single-cell level, and provides the conceptual framework required to discover rational therapeutic targets in liver cirrhosis.</p>
+</section>
+<section id="dataset-design" class="level3">
+<h3 class="anchored" data-anchor-id="dataset-design">Dataset Design</h3>
+<p>Single-cell transcriptomic data were analyzed from <strong>5 healthy livers, 5 cirrhotic livers, and 4 PBMC samples</strong> from cirrhotic patients. In parallel, single-cell transcriptomic data were also evaluated on <strong>hepatic macrophages isolated from healthy mice and from mice following chronic carbon tetrachloride administration</strong> to model the disease.</p>
+</section>
+<section id="analysis-design" class="level3">
+<h3 class="anchored" data-anchor-id="analysis-design">Analysis Design</h3>
+<p>The primary objective of this study was to isolate reliable target genes in the human cirrhotic liver using scRNA-seq data. <strong>1) Data retrieval from the provided accession number GSE136103 and creation of Seurat object</strong> was first performed to establish the computational framework. <strong>2) QC of the scRNA-seq using the “Seurat” package</strong> was then conducted to filter out low-quality cells, followed immediately by <strong>3) Batch Correction and Integration</strong> to eliminate technical variation. <strong>4) Dimension Reduction</strong> was executed via PCA and UMAP/t-SNE for 2D mapping, enabling the <strong>5) Visualization of Markers associated with the data and annotation of celltypes</strong>. <strong>6) Assess which of celltypes are more profound in cirrhotic tissue vs healthy tissue</strong>.</p>
+<p>To understand transcriptomic shifts, the pipeline was designed to <strong>7) Conduct Gene Differentials for each celltype and overall for all cells</strong>, followed by <strong>8) Finding Gene Ontology Terms and Building GO terms plots</strong> to resolve functional biological insights. Given their critical roles in liver pathology, specialized sub-analyses were performed, including <strong>9) Endothelial subcluster annotation and analysis</strong>, <strong>10) Mesenchymal subcluster annotation and analysis</strong>, and <strong>11) Macrophage subcluster annotation and analysis</strong>. A <strong>12) Random forest implementation to select for features that classify cirrhosis cells and healthy cells accurately on Endothelial, Mesenchyme and MP cluster</strong> was then utilized to leverage machine learning for biomarker discovery. This culminated in the <strong>13) Identificaton of features that are improtant and up-regulated via DEGs</strong> to yield a refined, high-confidence set of prioritized targets for liver cirrhosis.</p>
+</section>
+<section id="load-necessary-r-packages-for-this-analysis" class="level3">
+<h3 class="anchored" data-anchor-id="load-necessary-r-packages-for-this-analysis">Load Necessary R Packages for this analysis</h3>
+</section>
+<section id="set-working-directory" class="level3">
+<h3 class="anchored" data-anchor-id="set-working-directory">Set Working Directory</h3>
+<p>Set the directory to where the scRNA-seq data is located. Please make sure no other files exist in this directory as it will not be able to create seurat objects.</p>
+</section>
+<section id="part-1-data-curation" class="level3">
+<h3 class="anchored" data-anchor-id="part-1-data-curation">Part 1: Data Curation</h3>
+<p>For each sample a Seurat object has been created.</p>
+<section id="calculate-mitochondrial-percentage-for-each-cell-in-each-sample" class="level4">
+<h4 class="anchored" data-anchor-id="calculate-mitochondrial-percentage-for-each-cell-in-each-sample">Calculate Mitochondrial Percentage for each cell in each sample</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>seurat_list <span class="ot">&lt;-</span> <span class="fu">lapply</span>(<span class="at">X =</span> seurat_list, <span class="at">FUN =</span> <span class="cf">function</span>(x) {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  x <span class="ot">&lt;-</span> <span class="fu">PercentageFeatureSet</span>(x, <span class="at">pattern =</span> <span class="st">"^MT-"</span>, <span class="at">col.name =</span> <span class="st">"percent.mt"</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="visualize-the-number-of-rna-counts" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-number-of-rna-counts">Visualize the number of RNA counts</h4>
+<p>To evaluate sample quality, the RNA counts will be visualized using a violin plot to establish an upper threshold for filtering out anomalies. This step serves as the primary filter to eliminate potential outliers, doublets, or triplets from the dataset.</p>
+<p>For this phase of the analysis, only a single representative sample will be inspected, as this specific sample will serve as the anchor reference for downstream multi-sample integration. Other standard quality metrics will not be viewed or adjusted during this visual inspection, as the filtering thresholds have already been explicitly defined by the original publication associated with this dataset.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">VlnPlot</span>(seurat_list[[<span class="dv">1</span>]], <span class="at">features =</span> <span class="fu">c</span>(<span class="st">"nFeature_RNA"</span>)) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Default search for "data" layer in "RNA" assay yielded no results;
+utilizing "counts" layer instead.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: The `slot` argument of `FetchData()` is deprecated as of SeuratObject 5.0.0.
+ℹ Please use the `layer` argument instead.
+ℹ The deprecated feature was likely used in the Seurat package.
+  Please report the issue at &lt;https://github.com/satijalab/seurat/issues&gt;.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: `PackageCheck()` was deprecated in SeuratObject 5.0.0.
+ℹ Please use `rlang::check_installed()` instead.
+ℹ The deprecated feature was likely used in the Seurat package.
+  Please report the issue at &lt;https://github.com/satijalab/seurat/issues&gt;.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: `aes_string()` was deprecated in ggplot2 3.0.0.
+ℹ Please use tidy evaluation idioms with `aes()`.
+ℹ See also `vignette("ggplot2-in-packages")` for more information.
+ℹ The deprecated feature was likely used in the Seurat package.
+  Please report the issue at &lt;https://github.com/satijalab/seurat/issues&gt;.</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="part-2-sample-quality-controlpre-processing" class="level3">
+<h3 class="anchored" data-anchor-id="part-2-sample-quality-controlpre-processing">Part 2: Sample Quality Control/Pre-processing</h3>
+<p>To refine the dataset, cells with fewer than 300 detected genes (<code>nFeature_RNA</code>) or a mitochondrial gene percentage exceeding 30% will be removed to eliminate low-quality or dying cells. Conversely, an upper threshold will be applied to exclude cells with more than 4,000 detected genes, targeting potential multiplets.</p>
+<p>Following these manual thresholds, DoubletFinder will be implemented to computationally identify and remove remaining doublets. Based on community benchmarks and empirical data discussed on relevant GitHub repositories for this technology, an expected doublet rate of 3% will be utilized based on the typical cell density per sample in this dataset.</p>
+</section>
+<section id="part-3-batch-correction-integration-of-samples" class="level3">
+<h3 class="anchored" data-anchor-id="part-3-batch-correction-integration-of-samples">Part 3: Batch Correction &amp; Integration of Samples</h3>
+<p>Seurat integration steps do batch correction thus we do not need to take any steps. I used the first sample as reference to do the integration.</p>
+</section>
+<section id="part-4-dimensional-reduction-clustering" class="level3">
+<h3 class="anchored" data-anchor-id="part-4-dimensional-reduction-clustering">Part 4: Dimensional Reduction, Clustering</h3>
+<p>We have scaled the batch corrected counts, run principal components analysis and used harmony which is notorious for robust clustering. We calculated neighbors based on 15 harmony dimensions and clusters were calculated at 0.4. Finally, a UMAP was created based on the harmony dimensions.</p>
+</section>
+<section id="part-5-celltype-annotation" class="level3">
+<h3 class="anchored" data-anchor-id="part-5-celltype-annotation">Part 5: Celltype annotation</h3>
+<p>Cells were annotated based on the markers provided by article associated with this dataset.</p>
+<section id="curate-marker-vector-for-each-celltype" class="level4">
+<h4 class="anchored" data-anchor-id="curate-marker-vector-for-each-celltype">Curate Marker Vector for each celltype</h4>
+</section>
+<section id="visualize-the-mononuclear-phagocyte-marker-in-a-dot-plot" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-mononuclear-phagocyte-marker-in-a-dot-plot">Visualize the Mononuclear Phagocyte Marker in a Dot Plot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(seurat.combined, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> mp_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>() <span class="co"># Cluster 3,6,8</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="visualize-the-dendritic-marker-in-a-dot-plot" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-dendritic-marker-in-a-dot-plot">Visualize the Dendritic Marker in a Dot Plot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(seurat.combined, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> pdc_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cluster 16 pDC</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="visualize-the-innate-lymphoid-cell-marker-in-a-dot-plot" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-innate-lymphoid-cell-marker-in-a-dot-plot">Visualize the Innate Lymphoid Cell Marker in a Dot Plot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(seurat.combined, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> ilc_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cluster 5,1 ILC</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="visualize-the-cyclic-marker-in-a-dot-plot" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-cyclic-marker-in-a-dot-plot">Visualize the Cyclic Marker in a Dot Plot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(seurat.combined, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> cycling_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="visualize-the-t-cell-marker-in-a-dot-plot" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-t-cell-marker-in-a-dot-plot">Visualize the T Cell Marker in a Dot Plot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(seurat.combined, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> t_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cluster 0,2 T Cell</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="visualize-the-b-cell-marker-in-a-dot-plot" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-b-cell-marker-in-a-dot-plot">Visualize the B Cell Marker in a Dot Plot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(seurat.combined, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> b_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cluster 10 B Cell</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="visualize-the-plasma-cell-marker-in-a-dot-plot" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-plasma-cell-marker-in-a-dot-plot">Visualize the Plasma Cell Marker in a Dot Plot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(seurat.combined, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> plasma_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cluster 12 Plasma Cell</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="visualize-the-mast-cell-marker-in-a-dot-plot" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-mast-cell-marker-in-a-dot-plot">Visualize the Mast Cell Marker in a Dot Plot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(seurat.combined, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> mast_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cluster 13 Mast Cell</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="visualize-the-endothelial-marker-in-a-dot-plot" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-endothelial-marker-in-a-dot-plot">Visualize the Endothelial Marker in a Dot Plot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(seurat.combined, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> endo_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cluster 4,7 Endothelial </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="visualize-the-epithelial-marker-in-a-dot-plot" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-epithelial-marker-in-a-dot-plot">Visualize the Epithelial Marker in a Dot Plot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(seurat.combined, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> epithelia_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cluster 15 Epithelial</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="visualize-the-mesenchymal-marker-in-a-dot-plot" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-mesenchymal-marker-in-a-dot-plot">Visualize the Mesenchymal Marker in a Dot Plot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(seurat.combined, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> mesenchyma_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cluster 13,11 Mesenchymal</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="annotate-the-celltypes" class="level4">
+<h4 class="anchored" data-anchor-id="annotate-the-celltypes">Annotate the Celltypes</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>celltype <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"T Cell"</span>, <span class="st">"ILC"</span>, <span class="st">"T Cell"</span>, <span class="st">"MP"</span>, <span class="st">"Endothelial"</span>, <span class="st">"ILC"</span>, <span class="st">"MP"</span>, <span class="st">"Endothelial"</span>, <span class="st">"MP"</span>, <span class="st">"Epithelial"</span>, <span class="st">"B Cell"</span>, <span class="st">"Mesenchyme"</span>, <span class="st">"Plasma Cell"</span>, <span class="st">"Mast Cell"</span>, <span class="st">"Cycling"</span>, <span class="st">"Epithelial"</span>, <span class="st">"pDC"</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(celltype) <span class="ot">&lt;-</span> <span class="fu">levels</span>(seurat.combined)</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>seurat.combined <span class="ot">&lt;-</span> <span class="fu">RenameIdents</span>(seurat.combined, celltype)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="visualize-the-dimensional-plot-with-celltype-annotations" class="level4">
+<h4 class="anchored" data-anchor-id="visualize-the-dimensional-plot-with-celltype-annotations">Visualize the Dimensional Plot with Celltype Annotations</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DimPlot</span>(seurat.combined, <span class="at">label =</span> T, <span class="at">split.by =</span> <span class="st">"Condition"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-22-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DimPlot</span>(seurat.combined, <span class="at">label =</span> T)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-22-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="part-6-assess-cell-composition-by-condition" class="level3">
+<h3 class="anchored" data-anchor-id="part-6-assess-cell-composition-by-condition">Part 6: Assess cell composition by Condition</h3>
+<p>Based on the cellular composition analysis, cirrhotic tissue exhibits a marked increase in <strong>Endothelial cells, Mononuclear Phagocytes (MPs), Epithelial cells, B Cells, Plasma Cells, Mast Cells, Cycling Cells, and Dendritic Cells</strong> compared to healthy tissue. Conversely, healthy tissue retains a higher proportion of <strong>T Cells, Innate Lymphoid Cells (ILCs), and Mesenchymal Cells</strong>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate frequency table with meaningful column names</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>cell_counts <span class="ot">&lt;-</span> <span class="fu">table</span>(seurat.combined<span class="sc">@</span>active.ident, seurat.combined<span class="sc">$</span>Condition)</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>cell_counts_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(cell_counts)</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Rename default 'Var1' and 'Var2' columns for clarity</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(cell_counts_df)[<span class="fu">colnames</span>(cell_counts_df) <span class="sc">==</span> <span class="st">"Var1"</span>] <span class="ot">&lt;-</span> <span class="st">"CellType"</span></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(cell_counts_df)[<span class="fu">colnames</span>(cell_counts_df) <span class="sc">==</span> <span class="st">"Var2"</span>] <span class="ot">&lt;-</span> <span class="st">"Condition"</span></span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Initialize and assign total cell counts per condition</span></span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>cell_counts_df<span class="sc">$</span>TotalCells <span class="ot">=</span> <span class="dv">1</span></span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>cell_counts_df[cell_counts_df<span class="sc">$</span>Condition <span class="sc">==</span> <span class="st">"Cirrhotic"</span>, ]<span class="sc">$</span>TotalCells <span class="ot">=</span> <span class="dv">24716</span></span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a>cell_counts_df[cell_counts_df<span class="sc">$</span>Condition <span class="sc">==</span> <span class="st">"Healthy"</span>, ]<span class="sc">$</span>TotalCells <span class="ot">=</span> <span class="dv">33848</span></span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate percentage</span></span>
+<span id="cb30-15"><a href="#cb30-15" aria-hidden="true" tabindex="-1"></a>cell_counts_df<span class="sc">$</span>Percentage <span class="ot">=</span> cell_counts_df<span class="sc">$</span>Freq <span class="sc">/</span> cell_counts_df<span class="sc">$</span>TotalCells <span class="sc">*</span> <span class="dv">100</span></span>
+<span id="cb30-16"><a href="#cb30-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-17"><a href="#cb30-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot using the updated, clean variable names</span></span>
+<span id="cb30-18"><a href="#cb30-18" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(cell_counts_df, <span class="fu">aes</span>(<span class="at">y =</span> Percentage, <span class="at">x =</span> CellType, <span class="at">fill =</span> Condition)) <span class="sc">+</span> </span>
+<span id="cb30-19"><a href="#cb30-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span> <span class="st">"identity"</span>, <span class="at">position =</span> <span class="st">"dodge"</span>) <span class="sc">+</span> </span>
+<span id="cb30-20"><a href="#cb30-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">RotatedAxis</span>() <span class="sc">+</span> </span>
+<span id="cb30-21"><a href="#cb30-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">"Cell Type"</span>) <span class="sc">+</span> </span>
+<span id="cb30-22"><a href="#cb30-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">"Percentage of Cells"</span>) <span class="sc">+</span> </span>
+<span id="cb30-23"><a href="#cb30-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill =</span> <span class="fu">guide_legend</span>(<span class="at">title =</span> <span class="st">"Condition"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-23-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="part-7-conduct-gene-differential-on-all-cells-by-condition-cirrhotic-vs-health" class="level3">
+<h3 class="anchored" data-anchor-id="part-7-conduct-gene-differential-on-all-cells-by-condition-cirrhotic-vs-health">Part 7: Conduct Gene Differential on all cells by condition ( Cirrhotic vs Health)</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Find markers comparing Cirrhotic vs Healthy</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>cirrhotic_vs_healthy_markers <span class="ot">=</span> <span class="fu">FindMarkers</span>(seurat.combined, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">group.by =</span> <span class="st">"Condition"</span>, <span class="at">ident.1 =</span> <span class="st">"Cirrhotic"</span>, <span class="at">ident.2 =</span> <span class="st">"Healthy"</span>)</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Filter for significantly up-regulated genes</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>cirrhotic_up_regulated <span class="ot">=</span> cirrhotic_vs_healthy_markers <span class="sc">%&gt;%</span> <span class="fu">filter</span>(avg_log2FC <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> p_val_adj <span class="sc">&lt;</span> <span class="fl">0.05</span>)</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Check the dimensions (4413 genes identified as upregulated in cirrhotic tissue)</span></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(cirrhotic_up_regulated)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 4413    5</code></pre>
+</div>
+</div>
+</section>
+<section id="part-8-finding-gene-ontology-terms-for-each-celltype-based-on-significant-degs-for-each-celltype-cirrhotic-vs-healthy" class="level3">
+<h3 class="anchored" data-anchor-id="part-8-finding-gene-ontology-terms-for-each-celltype-based-on-significant-degs-for-each-celltype-cirrhotic-vs-healthy">Part 8: Finding Gene Ontology Terms for Each Celltype Based on Significant DEGs for each celltype (Cirrhotic vs Healthy)</h3>
+<section id="top-10-go-terms-plot-for-each-celltype" class="level4">
+<h4 class="anchored" data-anchor-id="top-10-go-terms-plot-for-each-celltype">Top 10 Go Terms Plot for Each Celltype</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Loop through each cell type in the list by its name</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (cell_type <span class="cf">in</span> <span class="fu">names</span>(gsea_list)) {</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Create a clean file name (e.g., "GSEA_T_Cell_dotplot.pdf")</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>  file_name <span class="ot">&lt;-</span> <span class="fu">paste0</span>(<span class="st">"GSEA_"</span>, <span class="fu">gsub</span>(<span class="st">" "</span>, <span class="st">"_"</span>, cell_type), <span class="st">"_dotplot.pdf"</span>)</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 1. Open the PDF graphics device with height 8 and width 8</span></span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pdf</span>(file_name, <span class="at">height =</span> <span class="dv">8</span>, <span class="at">width =</span> <span class="dv">8</span>)</span>
+<span id="cb33-9"><a href="#cb33-9" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb33-10"><a href="#cb33-10" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 2. Generate and print the dotplot for the current cell type</span></span>
+<span id="cb33-11"><a href="#cb33-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(</span>
+<span id="cb33-12"><a href="#cb33-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">dotplot</span>(gsea_list[[cell_type]], </span>
+<span id="cb33-13"><a href="#cb33-13" aria-hidden="true" tabindex="-1"></a>            <span class="at">showCategory =</span> <span class="dv">10</span>, </span>
+<span id="cb33-14"><a href="#cb33-14" aria-hidden="true" tabindex="-1"></a>            <span class="at">title =</span> <span class="fu">paste</span>(<span class="st">"Enriched Pathways"</span>, cell_type), </span>
+<span id="cb33-15"><a href="#cb33-15" aria-hidden="true" tabindex="-1"></a>            <span class="at">split =</span> <span class="st">".sign"</span>) <span class="sc">+</span> </span>
+<span id="cb33-16"><a href="#cb33-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_grid</span>(.<span class="sc">~</span>.sign)</span>
+<span id="cb33-17"><a href="#cb33-17" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb33-18"><a href="#cb33-18" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb33-19"><a href="#cb33-19" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 3. Close the device to save the file</span></span>
+<span id="cb33-20"><a href="#cb33-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">dev.off</span>()</span>
+<span id="cb33-21"><a href="#cb33-21" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb33-22"><a href="#cb33-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">message</span>(<span class="st">"Successfully saved: "</span>, file_name)</span>
+<span id="cb33-23"><a href="#cb33-23" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Successfully saved: GSEA_T_Cell_dotplot.pdf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Successfully saved: GSEA_ILC_dotplot.pdf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Successfully saved: GSEA_MP_dotplot.pdf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Successfully saved: GSEA_Endothelial_dotplot.pdf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Successfully saved: GSEA_Epithelial_dotplot.pdf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Successfully saved: GSEA_B_Cell_dotplot.pdf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Successfully saved: GSEA_Mesenchyme_dotplot.pdf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Successfully saved: GSEA_Plasma_Cell_dotplot.pdf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Successfully saved: GSEA_Mast_Cell_dotplot.pdf</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Successfully saved: GSEA_Cycling_dotplot.pdf</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="part-9-endothelial-celltype-subclustering" class="level3">
+<h3 class="anchored" data-anchor-id="part-9-endothelial-celltype-subclustering">Part 9: Endothelial Celltype Subclustering</h3>
+<section id="endothelial-subcluster-marker-dotplot-and-annotation" class="level4">
+<h4 class="anchored" data-anchor-id="endothelial-subcluster-marker-dotplot-and-annotation">Endothelial Subcluster Marker Dotplot and Annotation</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Define a comprehensive panel of canonical endothelial lineage and subset markers</span></span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a>all_endo_markers <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"CLEC4G"</span>, <span class="st">"CLEC4M"</span>, <span class="st">"STAB2"</span>, <span class="st">"MRC1"</span>, <span class="st">"CD14"</span>, <span class="st">"LYVE1"</span>, <span class="st">"CCL21"</span>, <span class="st">"PROX1"</span>, <span class="st">"PDPN"</span>, </span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"CPE"</span>, <span class="st">"CD320"</span>, <span class="st">"BMPER"</span>, <span class="st">"RSPO3"</span>, <span class="st">"WNT2"</span>, <span class="st">"LHX6"</span>, <span class="st">"HTR2B"</span>, <span class="st">"AIF1L"</span>, <span class="st">"SOX17"</span>, </span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">"PLVAP"</span>, <span class="st">"VWA1"</span>, <span class="st">"ACKR1"</span></span>
+<span id="cb44-6"><a href="#cb44-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb44-7"><a href="#cb44-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-8"><a href="#cb44-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Visualize marker expression profiles across clusters via a dot plot, rotating x-axis labels for readability</span></span>
+<span id="cb44-9"><a href="#cb44-9" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(Endothelial, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> all_endo_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-28-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Create a vector mapping the numerical clusters to specific endothelial subclusters</span></span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>celltype <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Endo6"</span>, <span class="st">"Endo5"</span>, <span class="st">"Endo6"</span>, <span class="st">"Endo7"</span>, <span class="st">"Endo1"</span>, <span class="st">"Endo3"</span>, <span class="st">"Endo2"</span>, <span class="st">"Endo4"</span>, <span class="st">"Endo6"</span>)</span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. Assign the original cluster numbers as names to the mapping vector</span></span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(celltype) <span class="ot">&lt;-</span> <span class="fu">levels</span>(Endothelial)</span>
+<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-7"><a href="#cb45-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 5. Rename the active identities in the Endothelial Seurat object to reflect the new subcluster labels</span></span>
+<span id="cb45-8"><a href="#cb45-8" aria-hidden="true" tabindex="-1"></a>Endothelial <span class="ot">&lt;-</span> <span class="fu">RenameIdents</span>(Endothelial, celltype)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="endothelial-subcluster-and-cell-composition-visualization" class="level4">
+<h4 class="anchored" data-anchor-id="endothelial-subcluster-and-cell-composition-visualization">Endothelial Subcluster and Cell Composition Visualization</h4>
+<p>Endo6, Endo7 and Endo2 are subcluster that are more prominent in Cirrhotic tissue in comparison to healthy tissue.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">DimPlot</span>(Endothelial, <span class="at">label =</span> <span class="cn">TRUE</span>, <span class="at">split.by =</span> <span class="st">"Condition"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-29-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate frequency table with meaningful column names</span></span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>cell_counts <span class="ot">&lt;-</span> <span class="fu">table</span>(Endothelial<span class="sc">@</span>active.ident, Endothelial<span class="sc">$</span>Condition)</span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>cell_counts_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(cell_counts)</span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Rename default 'Var1' and 'Var2' columns for clarity</span></span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(cell_counts_df)[<span class="fu">colnames</span>(cell_counts_df) <span class="sc">==</span> <span class="st">"Var1"</span>] <span class="ot">&lt;-</span> <span class="st">"CellType"</span></span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(cell_counts_df)[<span class="fu">colnames</span>(cell_counts_df) <span class="sc">==</span> <span class="st">"Var2"</span>] <span class="ot">&lt;-</span> <span class="st">"Condition"</span></span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Initialize and assign total cell counts per condition</span></span>
+<span id="cb47-10"><a href="#cb47-10" aria-hidden="true" tabindex="-1"></a>cell_counts_df<span class="sc">$</span>TotalCells <span class="ot">=</span> <span class="dv">1</span></span>
+<span id="cb47-11"><a href="#cb47-11" aria-hidden="true" tabindex="-1"></a>cell_counts_df[cell_counts_df<span class="sc">$</span>Condition <span class="sc">==</span> <span class="st">"Cirrhotic"</span>, ]<span class="sc">$</span>TotalCells <span class="ot">=</span> <span class="dv">4409</span></span>
+<span id="cb47-12"><a href="#cb47-12" aria-hidden="true" tabindex="-1"></a>cell_counts_df[cell_counts_df<span class="sc">$</span>Condition <span class="sc">==</span> <span class="st">"Healthy"</span>, ]<span class="sc">$</span>TotalCells <span class="ot">=</span> <span class="dv">2580</span></span>
+<span id="cb47-13"><a href="#cb47-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-14"><a href="#cb47-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate percentage</span></span>
+<span id="cb47-15"><a href="#cb47-15" aria-hidden="true" tabindex="-1"></a>cell_counts_df<span class="sc">$</span>Percentage <span class="ot">=</span> cell_counts_df<span class="sc">$</span>Freq <span class="sc">/</span> cell_counts_df<span class="sc">$</span>TotalCells <span class="sc">*</span> <span class="dv">100</span></span>
+<span id="cb47-16"><a href="#cb47-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-17"><a href="#cb47-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot using the updated, clean variable names</span></span>
+<span id="cb47-18"><a href="#cb47-18" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(cell_counts_df, <span class="fu">aes</span>(<span class="at">y =</span> Percentage, <span class="at">x =</span> CellType, <span class="at">fill =</span> Condition)) <span class="sc">+</span> </span>
+<span id="cb47-19"><a href="#cb47-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span> <span class="st">"identity"</span>, <span class="at">position =</span> <span class="st">"dodge"</span>) <span class="sc">+</span> </span>
+<span id="cb47-20"><a href="#cb47-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">RotatedAxis</span>() <span class="sc">+</span> </span>
+<span id="cb47-21"><a href="#cb47-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">"Cell Type"</span>) <span class="sc">+</span> </span>
+<span id="cb47-22"><a href="#cb47-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">"Percentage of Cells"</span>) <span class="sc">+</span> </span>
+<span id="cb47-23"><a href="#cb47-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill =</span> <span class="fu">guide_legend</span>(<span class="at">title =</span> <span class="st">"Condition"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-29-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="part-10-mesenchymal-subclustering" class="level3">
+<h3 class="anchored" data-anchor-id="part-10-mesenchymal-subclustering">Part 10: Mesenchymal Subclustering</h3>
+<section id="mesenchymal-marker-dotplot" class="level4">
+<h4 class="anchored" data-anchor-id="mesenchymal-marker-dotplot">Mesenchymal Marker Dotplot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>paper_meso_markers <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"MYH11"</span>, <span class="st">"RGS5"</span>,                       <span class="co"># VSMC</span></span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"PDGFRA"</span>,                              <span class="co"># HSC</span></span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"COL1A1"</span>, <span class="st">"COL3A1"</span>, <span class="st">"TIMP1"</span>, <span class="st">"CCL2"</span>,   <span class="co"># SAMes (Scar-Associated)</span></span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">"KRT19"</span>, <span class="st">"PDPN"</span>, <span class="st">"WT1"</span>, <span class="st">"MSLN"</span>         <span class="co"># Mesothelia</span></span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(Mesenchymal, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> paper_meso_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Scaling data with a low number of groups may produce misleading
+results</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-31-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="mesenchymal-subcluster-annotation-and-cell-composition" class="level4">
+<h4 class="anchored" data-anchor-id="mesenchymal-subcluster-annotation-and-cell-composition">Mesenchymal Subcluster Annotation and Cell Composition</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a>celltype <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"HSC"</span>, <span class="st">"VSMC"</span>, <span class="st">"SAMes"</span>, <span class="st">"Mesothelial"</span>)</span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(celltype) <span class="ot">&lt;-</span> <span class="fu">levels</span>(Mesenchymal)</span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>Mesenchymal <span class="ot">&lt;-</span> <span class="fu">RenameIdents</span>(Mesenchymal, celltype)</span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 11. Final visualization splits</span></span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a><span class="fu">DimPlot</span>(Mesenchymal, <span class="at">label =</span> <span class="cn">TRUE</span>, <span class="at">split.by =</span> <span class="st">"Condition"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-32-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="mesenchymal-subcluster-composition-analysis" class="level4">
+<h4 class="anchored" data-anchor-id="mesenchymal-subcluster-composition-analysis">Mesenchymal Subcluster Composition Analysis</h4>
+<p>SAMes is the subcluster in the Mesenchymal cluster that has more cells in cirrhotic tissue than healthy tissue.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate frequency table with meaningful column names</span></span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a>cell_counts <span class="ot">&lt;-</span> <span class="fu">table</span>(Mesenchymal<span class="sc">@</span>active.ident, Mesenchymal<span class="sc">$</span>Condition)</span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a>cell_counts_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(cell_counts)</span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Rename default 'Var1' and 'Var2' columns for clarity</span></span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(cell_counts_df)[<span class="fu">colnames</span>(cell_counts_df) <span class="sc">==</span> <span class="st">"Var1"</span>] <span class="ot">&lt;-</span> <span class="st">"CellType"</span></span>
+<span id="cb51-7"><a href="#cb51-7" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(cell_counts_df)[<span class="fu">colnames</span>(cell_counts_df) <span class="sc">==</span> <span class="st">"Var2"</span>] <span class="ot">&lt;-</span> <span class="st">"Condition"</span></span>
+<span id="cb51-8"><a href="#cb51-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-9"><a href="#cb51-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Initialize and assign total cell counts per condition</span></span>
+<span id="cb51-10"><a href="#cb51-10" aria-hidden="true" tabindex="-1"></a>cell_counts_df<span class="sc">$</span>TotalCells <span class="ot">=</span> <span class="dv">1</span></span>
+<span id="cb51-11"><a href="#cb51-11" aria-hidden="true" tabindex="-1"></a>cell_counts_df[cell_counts_df<span class="sc">$</span>Condition <span class="sc">==</span> <span class="st">"Cirrhotic"</span>, ]<span class="sc">$</span>TotalCells <span class="ot">=</span> <span class="dv">344</span></span>
+<span id="cb51-12"><a href="#cb51-12" aria-hidden="true" tabindex="-1"></a>cell_counts_df[cell_counts_df<span class="sc">$</span>Condition <span class="sc">==</span> <span class="st">"Healthy"</span>, ]<span class="sc">$</span>TotalCells <span class="ot">=</span> <span class="dv">1290</span></span>
+<span id="cb51-13"><a href="#cb51-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-14"><a href="#cb51-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate percentage</span></span>
+<span id="cb51-15"><a href="#cb51-15" aria-hidden="true" tabindex="-1"></a>cell_counts_df<span class="sc">$</span>Percentage <span class="ot">=</span> cell_counts_df<span class="sc">$</span>Freq <span class="sc">/</span> cell_counts_df<span class="sc">$</span>TotalCells <span class="sc">*</span> <span class="dv">100</span></span>
+<span id="cb51-16"><a href="#cb51-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-17"><a href="#cb51-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot using the updated, clean variable names</span></span>
+<span id="cb51-18"><a href="#cb51-18" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(cell_counts_df, <span class="fu">aes</span>(<span class="at">y =</span> Percentage, <span class="at">x =</span> CellType, <span class="at">fill =</span> Condition)) <span class="sc">+</span> </span>
+<span id="cb51-19"><a href="#cb51-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span> <span class="st">"identity"</span>, <span class="at">position =</span> <span class="st">"dodge"</span>) <span class="sc">+</span> </span>
+<span id="cb51-20"><a href="#cb51-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">RotatedAxis</span>() <span class="sc">+</span> </span>
+<span id="cb51-21"><a href="#cb51-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">"Cell Type"</span>) <span class="sc">+</span> </span>
+<span id="cb51-22"><a href="#cb51-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">"Percentage of Cells"</span>) <span class="sc">+</span> </span>
+<span id="cb51-23"><a href="#cb51-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill =</span> <span class="fu">guide_legend</span>(<span class="at">title =</span> <span class="st">"Condition"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-33-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="part-11-macrophage-cells-subclustering" class="level3">
+<h3 class="anchored" data-anchor-id="part-11-macrophage-cells-subclustering">Part 11: Macrophage Cells Subclustering</h3>
+<section id="mp-subcluster-marker-dotplot" class="level4">
+<h4 class="anchored" data-anchor-id="mp-subcluster-marker-dotplot">MP subcluster Marker Dotplot</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 9. Marker Expression DotPlot (Updated with Mononuclear Phagocyte / Macrophage lineage markers)</span></span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>paper_mp_markers <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"S100A12"</span>, <span class="st">"FCN1"</span>, <span class="st">"MNDA"</span>, <span class="st">"NBEAL1"</span>, <span class="st">"IFITM2"</span>, <span class="st">"APOBEC3A"</span>, <span class="st">"RGS2"</span>, <span class="co"># TMo</span></span>
+<span id="cb52-4"><a href="#cb52-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"TREM2"</span>, <span class="st">"CD9"</span>,                                                   <span class="co"># SAMΦ</span></span>
+<span id="cb52-5"><a href="#cb52-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">"C1QC"</span>, <span class="st">"CD5L"</span>, <span class="st">"CD163"</span>, <span class="st">"VCAM1"</span>, <span class="st">"MARCO"</span>, <span class="st">"SIGLEC1"</span>, <span class="st">"MERTK"</span>,    <span class="co"># KC</span></span>
+<span id="cb52-6"><a href="#cb52-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">"ARL4C"</span>, <span class="st">"FCER1A"</span>, <span class="st">"CD1E"</span>, <span class="st">"LGALS2"</span>                               <span class="co"># cDC</span></span>
+<span id="cb52-7"><a href="#cb52-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb52-8"><a href="#cb52-8" aria-hidden="true" tabindex="-1"></a><span class="fu">DotPlot</span>(MP, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">features =</span> paper_mp_markers) <span class="sc">+</span> <span class="fu">RotatedAxis</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-35-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="annotation-of-mp-subclusters" class="level3">
+<h3 class="anchored" data-anchor-id="annotation-of-mp-subclusters">Annotation of MP subclusters</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a>celltype <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Tissue Monocyte"</span>, <span class="st">"SAMΦ"</span>, <span class="st">"Kupffer cell"</span>, <span class="st">"Conventional dendritic cell"</span>, <span class="st">"Tissue Monocyte"</span>, <span class="st">"Tissue Monocyte"</span>, <span class="st">"Tissue Monocyte"</span>,<span class="st">"Conventional dendritic cell"</span>,<span class="st">"Tissue Monocyte"</span>)</span>
+<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(celltype) <span class="ot">&lt;-</span> <span class="fu">levels</span>(MP)</span>
+<span id="cb53-3"><a href="#cb53-3" aria-hidden="true" tabindex="-1"></a>MP <span class="ot">&lt;-</span> <span class="fu">RenameIdents</span>(MP, celltype)</span>
+<span id="cb53-4"><a href="#cb53-4" aria-hidden="true" tabindex="-1"></a><span class="fu">DimPlot</span>(MP, <span class="at">label =</span> <span class="cn">TRUE</span>, <span class="at">split.by =</span> <span class="st">"Condition"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-36-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<section id="mp-subcluster-cell-composition-analysis" class="level4">
+<h4 class="anchored" data-anchor-id="mp-subcluster-cell-composition-analysis">MP subcluster cell composition analysis</h4>
+<p>Tissue Monocyte and SAMΦ have more cells in cirrhotic tissue.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate frequency table with meaningful column names</span></span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>cell_counts <span class="ot">&lt;-</span> <span class="fu">table</span>(MP<span class="sc">@</span>active.ident, MP<span class="sc">$</span>Condition)</span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>cell_counts_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(cell_counts)</span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Rename default 'Var1' and 'Var2' columns for clarity</span></span>
+<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(cell_counts_df)[<span class="fu">colnames</span>(cell_counts_df) <span class="sc">==</span> <span class="st">"Var1"</span>] <span class="ot">&lt;-</span> <span class="st">"CellType"</span></span>
+<span id="cb54-7"><a href="#cb54-7" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(cell_counts_df)[<span class="fu">colnames</span>(cell_counts_df) <span class="sc">==</span> <span class="st">"Var2"</span>] <span class="ot">&lt;-</span> <span class="st">"Condition"</span></span>
+<span id="cb54-8"><a href="#cb54-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-9"><a href="#cb54-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Initialize and assign total cell counts per condition</span></span>
+<span id="cb54-10"><a href="#cb54-10" aria-hidden="true" tabindex="-1"></a>cell_counts_df<span class="sc">$</span>TotalCells <span class="ot">=</span> <span class="dv">1</span></span>
+<span id="cb54-11"><a href="#cb54-11" aria-hidden="true" tabindex="-1"></a>cell_counts_df[cell_counts_df<span class="sc">$</span>Condition <span class="sc">==</span> <span class="st">"Cirrhotic"</span>, ]<span class="sc">$</span>TotalCells <span class="ot">=</span> <span class="dv">5048</span></span>
+<span id="cb54-12"><a href="#cb54-12" aria-hidden="true" tabindex="-1"></a>cell_counts_df[cell_counts_df<span class="sc">$</span>Condition <span class="sc">==</span> <span class="st">"Healthy"</span>, ]<span class="sc">$</span>TotalCells <span class="ot">=</span> <span class="dv">6178</span></span>
+<span id="cb54-13"><a href="#cb54-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-14"><a href="#cb54-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate percentage</span></span>
+<span id="cb54-15"><a href="#cb54-15" aria-hidden="true" tabindex="-1"></a>cell_counts_df<span class="sc">$</span>Percentage <span class="ot">=</span> cell_counts_df<span class="sc">$</span>Freq <span class="sc">/</span> cell_counts_df<span class="sc">$</span>TotalCells <span class="sc">*</span> <span class="dv">100</span></span>
+<span id="cb54-16"><a href="#cb54-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-17"><a href="#cb54-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot using the updated, clean variable names</span></span>
+<span id="cb54-18"><a href="#cb54-18" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(cell_counts_df, <span class="fu">aes</span>(<span class="at">y =</span> Percentage, <span class="at">x =</span> CellType, <span class="at">fill =</span> Condition)) <span class="sc">+</span> </span>
+<span id="cb54-19"><a href="#cb54-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span> <span class="st">"identity"</span>, <span class="at">position =</span> <span class="st">"dodge"</span>) <span class="sc">+</span> </span>
+<span id="cb54-20"><a href="#cb54-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">RotatedAxis</span>() <span class="sc">+</span> </span>
+<span id="cb54-21"><a href="#cb54-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">"Cell Type"</span>) <span class="sc">+</span> </span>
+<span id="cb54-22"><a href="#cb54-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">"Percentage of Cells"</span>) <span class="sc">+</span> </span>
+<span id="cb54-23"><a href="#cb54-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">fill =</span> <span class="fu">guide_legend</span>(<span class="at">title =</span> <span class="st">"Condition"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-37-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="part-12-random-forest-implementation-for-important-feature-selection" class="level4">
+<h4 class="anchored" data-anchor-id="part-12-random-forest-implementation-for-important-feature-selection">Part 12: Random Forest Implementation for Important Feature Selection</h4>
+</section>
+<section id="endothelial-feature-selection" class="level4">
+<h4 class="anchored" data-anchor-id="endothelial-feature-selection">Endothelial Feature Selection</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Data Extraction &amp; Reshaping</span></span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a><span class="fu">DefaultAssay</span>(Endothelial) <span class="ot">&lt;-</span> <span class="st">"RNA"</span></span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>Endothelial <span class="ot">&lt;-</span> <span class="fu">ScaleData</span>(Endothelial)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Centering and scaling data matrix</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Extract and transpose the scaled expression data</span></span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>endothelial_expr_mat <span class="ot">&lt;-</span> Endothelial<span class="sc">@</span>assays<span class="sc">$</span>RNA<span class="sc">$</span>scale.data</span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a>endothelial_scaled_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">t</span>(endothelial_expr_mat))</span>
+<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-5"><a href="#cb57-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Print dimensions: rows = cells, columns = 2000 highly variable genes</span></span>
+<span id="cb57-6"><a href="#cb57-6" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(endothelial_scaled_df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 6989 2000</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Annotate Metadata &amp; Format Target Variable</span></span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a>endothelial_scaled_df<span class="sc">$</span>cell_type    <span class="ot">&lt;-</span> <span class="fu">factor</span>(Endothelial<span class="sc">$</span>Condition) <span class="co"># Target variable formatted as factor</span></span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>endothelial_scaled_df<span class="sc">$</span>cell_barcode <span class="ot">&lt;-</span> <span class="fu">rownames</span>(endothelial_scaled_df)</span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-5"><a href="#cb59-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-6"><a href="#cb59-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Data Splitting &amp; Resampling</span></span>
+<span id="cb59-7"><a href="#cb59-7" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>) <span class="co"># Recommended for reproducibility</span></span>
+<span id="cb59-8"><a href="#cb59-8" aria-hidden="true" tabindex="-1"></a>endothelial_split <span class="ot">&lt;-</span> <span class="fu">initial_split</span>(endothelial_scaled_df, <span class="at">strata =</span> <span class="st">"cell_type"</span>)</span>
+<span id="cb59-9"><a href="#cb59-9" aria-hidden="true" tabindex="-1"></a>endothelial_train <span class="ot">&lt;-</span> <span class="fu">training</span>(endothelial_split)</span>
+<span id="cb59-10"><a href="#cb59-10" aria-hidden="true" tabindex="-1"></a>endothelial_test  <span class="ot">&lt;-</span> <span class="fu">testing</span>(endothelial_split)</span>
+<span id="cb59-11"><a href="#cb59-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-12"><a href="#cb59-12" aria-hidden="true" tabindex="-1"></a><span class="co"># 10-fold cross-validation</span></span>
+<span id="cb59-13"><a href="#cb59-13" aria-hidden="true" tabindex="-1"></a>endothelial_folds <span class="ot">&lt;-</span> <span class="fu">vfold_cv</span>(endothelial_train, <span class="at">v =</span> <span class="dv">10</span>)</span>
+<span id="cb59-14"><a href="#cb59-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-15"><a href="#cb59-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-16"><a href="#cb59-16" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. Recipe Configuration (Preprocessing)</span></span>
+<span id="cb59-17"><a href="#cb59-17" aria-hidden="true" tabindex="-1"></a>endothelial_recipe <span class="ot">&lt;-</span> <span class="fu">recipe</span>(<span class="at">formula =</span> cell_type <span class="sc">~</span> ., <span class="at">data =</span> endothelial_train) <span class="sc">%&gt;%</span></span>
+<span id="cb59-18"><a href="#cb59-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">update_role</span>(cell_barcode, <span class="at">new_role =</span> <span class="st">"ID"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb59-19"><a href="#cb59-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_zv</span>(<span class="fu">all_predictors</span>())</span>
+<span id="cb59-20"><a href="#cb59-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-21"><a href="#cb59-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-22"><a href="#cb59-22" aria-hidden="true" tabindex="-1"></a><span class="co"># 5. Model Specification &amp; Workflow Pipeline</span></span>
+<span id="cb59-23"><a href="#cb59-23" aria-hidden="true" tabindex="-1"></a>endothelial_spec <span class="ot">&lt;-</span> <span class="fu">rand_forest</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb59-24"><a href="#cb59-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"randomForest"</span>, <span class="at">importance =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb59-25"><a href="#cb59-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_mode</span>(<span class="st">"classification"</span>)</span>
+<span id="cb59-26"><a href="#cb59-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-27"><a href="#cb59-27" aria-hidden="true" tabindex="-1"></a>endothelial_workflow <span class="ot">&lt;-</span> <span class="fu">workflow</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb59-28"><a href="#cb59-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_recipe</span>(endothelial_recipe) <span class="sc">%&gt;%</span> </span>
+<span id="cb59-29"><a href="#cb59-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_model</span>(endothelial_spec)</span>
+<span id="cb59-30"><a href="#cb59-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-31"><a href="#cb59-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-32"><a href="#cb59-32" aria-hidden="true" tabindex="-1"></a><span class="co"># 6. Model Training</span></span>
+<span id="cb59-33"><a href="#cb59-33" aria-hidden="true" tabindex="-1"></a>endothelial_fit <span class="ot">&lt;-</span> <span class="fu">fit</span>(endothelial_workflow, <span class="at">data =</span> endothelial_train)</span>
+<span id="cb59-34"><a href="#cb59-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-35"><a href="#cb59-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-36"><a href="#cb59-36" aria-hidden="true" tabindex="-1"></a><span class="co"># 7. Model Evaluation (Confusion Matrix)</span></span>
+<span id="cb59-37"><a href="#cb59-37" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(endothelial_fit, <span class="at">new_data =</span> endothelial_test) <span class="sc">%&gt;%</span></span>
+<span id="cb59-38"><a href="#cb59-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(endothelial_test <span class="sc">%&gt;%</span> <span class="fu">select</span>(cell_type)) <span class="sc">%&gt;%</span></span>
+<span id="cb59-39"><a href="#cb59-39" aria-hidden="true" tabindex="-1"></a>  <span class="fu">conf_mat</span>(<span class="at">truth =</span> cell_type, <span class="at">estimate =</span> .pred_class)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           Truth
+Prediction  Cirrhotic Healthy
+  Cirrhotic      1073      63
+  Healthy          30     582</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb61"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 8. Feature Importance Visualization</span></span>
+<span id="cb61-2"><a href="#cb61-2" aria-hidden="true" tabindex="-1"></a>endothelial_fit <span class="sc">%&gt;%</span></span>
+<span id="cb61-3"><a href="#cb61-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">extract_fit_parsnip</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb61-4"><a href="#cb61-4" aria-hidden="true" tabindex="-1"></a>  vip<span class="sc">::</span><span class="fu">vip</span>(<span class="at">geom =</span> <span class="st">"col"</span>, <span class="at">num_features =</span> <span class="dv">30</span>) <span class="sc">+</span> </span>
+<span id="cb61-5"><a href="#cb61-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb61-6"><a href="#cb61-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Endothelial Random Forest Variable Importance"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-38-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="mesenchymal-feature-selection" class="level4">
+<h4 class="anchored" data-anchor-id="mesenchymal-feature-selection">Mesenchymal Feature Selection</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Data Extraction &amp; Reshaping</span></span>
+<span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a><span class="fu">DefaultAssay</span>(Mesenchymal) <span class="ot">&lt;-</span> <span class="st">"RNA"</span></span>
+<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a>Mesenchymal <span class="ot">&lt;-</span> <span class="fu">ScaleData</span>(Mesenchymal)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Centering and scaling data matrix</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Safely extract ONLY the 2000 highly variable features to save memory</span></span>
+<span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a>mesenchymal_hvgs <span class="ot">&lt;-</span> <span class="fu">VariableFeatures</span>(Mesenchymal)</span>
+<span id="cb64-3"><a href="#cb64-3" aria-hidden="true" tabindex="-1"></a>mesenchymal_data_mat <span class="ot">&lt;-</span> <span class="fu">t</span>(<span class="fu">as.matrix</span>(<span class="fu">GetAssayData</span>(Mesenchymal, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">slot =</span> <span class="st">"scale.data"</span>)[mesenchymal_hvgs, ]))</span>
+<span id="cb64-4"><a href="#cb64-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb64-5"><a href="#cb64-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert to data frame</span></span>
+<span id="cb64-6"><a href="#cb64-6" aria-hidden="true" tabindex="-1"></a>mesenchymal_scaled_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(mesenchymal_data_mat)</span>
+<span id="cb64-7"><a href="#cb64-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Now, every row is a cell with 2000 genes/features/predictors. </span></span>
+<span id="cb64-8"><a href="#cb64-8" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(mesenchymal_scaled_df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1634 2000</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb66"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Annotate Metadata &amp; Format Target Variable</span></span>
+<span id="cb66-2"><a href="#cb66-2" aria-hidden="true" tabindex="-1"></a>mesenchymal_scaled_df<span class="sc">$</span>cell_type    <span class="ot">&lt;-</span> <span class="fu">factor</span>(Mesenchymal<span class="sc">$</span>Condition) <span class="co"># Target variable formatted as factor</span></span>
+<span id="cb66-3"><a href="#cb66-3" aria-hidden="true" tabindex="-1"></a>mesenchymal_scaled_df<span class="sc">$</span>cell_barcode <span class="ot">&lt;-</span> <span class="fu">rownames</span>(mesenchymal_scaled_df)</span>
+<span id="cb66-4"><a href="#cb66-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-5"><a href="#cb66-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-6"><a href="#cb66-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-7"><a href="#cb66-7" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>) <span class="co"># Recommended for reproducibility</span></span>
+<span id="cb66-8"><a href="#cb66-8" aria-hidden="true" tabindex="-1"></a>mesenchymal_split <span class="ot">&lt;-</span> <span class="fu">initial_split</span>(mesenchymal_scaled_df, <span class="at">strata =</span> <span class="st">"cell_type"</span>)</span>
+<span id="cb66-9"><a href="#cb66-9" aria-hidden="true" tabindex="-1"></a>mesenchymal_train <span class="ot">&lt;-</span> <span class="fu">training</span>(mesenchymal_split)</span>
+<span id="cb66-10"><a href="#cb66-10" aria-hidden="true" tabindex="-1"></a>mesenchymal_test  <span class="ot">&lt;-</span> <span class="fu">testing</span>(mesenchymal_split)</span>
+<span id="cb66-11"><a href="#cb66-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-12"><a href="#cb66-12" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 fold cross validation</span></span>
+<span id="cb66-13"><a href="#cb66-13" aria-hidden="true" tabindex="-1"></a>mesenchymal_folds <span class="ot">&lt;-</span> <span class="fu">vfold_cv</span>(mesenchymal_train, <span class="at">v =</span> <span class="dv">10</span>)</span>
+<span id="cb66-14"><a href="#cb66-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-15"><a href="#cb66-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-16"><a href="#cb66-16" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. Recipe Configuration (Preprocessing)</span></span>
+<span id="cb66-17"><a href="#cb66-17" aria-hidden="true" tabindex="-1"></a>mesenchymal_recipe <span class="ot">&lt;-</span> <span class="fu">recipe</span>(<span class="at">formula =</span> cell_type <span class="sc">~</span> ., <span class="at">data =</span> mesenchymal_train) <span class="sc">%&gt;%</span></span>
+<span id="cb66-18"><a href="#cb66-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">update_role</span>(cell_barcode, <span class="at">new_role =</span> <span class="st">"ID"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb66-19"><a href="#cb66-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_zv</span>(<span class="fu">all_predictors</span>())</span>
+<span id="cb66-20"><a href="#cb66-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-21"><a href="#cb66-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-22"><a href="#cb66-22" aria-hidden="true" tabindex="-1"></a><span class="co"># 5. Model Specification &amp; Workflow Pipeline</span></span>
+<span id="cb66-23"><a href="#cb66-23" aria-hidden="true" tabindex="-1"></a>mesenchymal_spec <span class="ot">&lt;-</span> <span class="fu">rand_forest</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb66-24"><a href="#cb66-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"randomForest"</span>, <span class="at">importance =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb66-25"><a href="#cb66-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_mode</span>(<span class="st">"classification"</span>)</span>
+<span id="cb66-26"><a href="#cb66-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-27"><a href="#cb66-27" aria-hidden="true" tabindex="-1"></a>mesenchymal_workflow <span class="ot">&lt;-</span> <span class="fu">workflow</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb66-28"><a href="#cb66-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_recipe</span>(mesenchymal_recipe) <span class="sc">%&gt;%</span> </span>
+<span id="cb66-29"><a href="#cb66-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_model</span>(mesenchymal_spec)</span>
+<span id="cb66-30"><a href="#cb66-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-31"><a href="#cb66-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-32"><a href="#cb66-32" aria-hidden="true" tabindex="-1"></a><span class="co"># 6. Model Training</span></span>
+<span id="cb66-33"><a href="#cb66-33" aria-hidden="true" tabindex="-1"></a>mesenchymal_fit <span class="ot">&lt;-</span> <span class="fu">fit</span>(mesenchymal_workflow, <span class="at">data =</span> mesenchymal_train)</span>
+<span id="cb66-34"><a href="#cb66-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-35"><a href="#cb66-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-36"><a href="#cb66-36" aria-hidden="true" tabindex="-1"></a><span class="co"># 7. Model Evaluation (Confusion Matrix)</span></span>
+<span id="cb66-37"><a href="#cb66-37" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(mesenchymal_fit, <span class="at">new_data =</span> mesenchymal_test) <span class="sc">%&gt;%</span></span>
+<span id="cb66-38"><a href="#cb66-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(mesenchymal_test <span class="sc">%&gt;%</span> <span class="fu">select</span>(cell_type)) <span class="sc">%&gt;%</span></span>
+<span id="cb66-39"><a href="#cb66-39" aria-hidden="true" tabindex="-1"></a>  <span class="fu">conf_mat</span>(<span class="at">truth =</span> cell_type, <span class="at">estimate =</span> .pred_class)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           Truth
+Prediction  Cirrhotic Healthy
+  Cirrhotic        57       2
+  Healthy          29     321</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb68"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 8. Feature Importance Visualization</span></span>
+<span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a>mesenchymal_fit <span class="sc">%&gt;%</span></span>
+<span id="cb68-3"><a href="#cb68-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">extract_fit_parsnip</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb68-4"><a href="#cb68-4" aria-hidden="true" tabindex="-1"></a>  vip<span class="sc">::</span><span class="fu">vip</span>(<span class="at">geom =</span> <span class="st">"col"</span>, <span class="at">num_features =</span> <span class="dv">30</span>) <span class="sc">+</span> </span>
+<span id="cb68-5"><a href="#cb68-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb68-6"><a href="#cb68-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Random Forest Variable Importance (Mesenchymal)"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-39-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="mononuclear-phagocyte-mp-feature-selection" class="level4">
+<h4 class="anchored" data-anchor-id="mononuclear-phagocyte-mp-feature-selection">Mononuclear Phagocyte (MP) Feature Selection</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb69"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Data Extraction &amp; Reshaping</span></span>
+<span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a><span class="fu">DefaultAssay</span>(MP) <span class="ot">&lt;-</span> <span class="st">"RNA"</span></span>
+<span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a>MP <span class="ot">&lt;-</span> <span class="fu">ScaleData</span>(MP)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Centering and scaling data matrix</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb71"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Safely extract ONLY the 2000 highly variable features to save memory</span></span>
+<span id="cb71-2"><a href="#cb71-2" aria-hidden="true" tabindex="-1"></a>mp_hvgs <span class="ot">&lt;-</span> <span class="fu">VariableFeatures</span>(MP)</span>
+<span id="cb71-3"><a href="#cb71-3" aria-hidden="true" tabindex="-1"></a>mp_data_mat <span class="ot">&lt;-</span> <span class="fu">t</span>(<span class="fu">as.matrix</span>(<span class="fu">GetAssayData</span>(MP, <span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">slot =</span> <span class="st">"scale.data"</span>)[mp_hvgs, ]))</span>
+<span id="cb71-4"><a href="#cb71-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb71-5"><a href="#cb71-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert to data frame</span></span>
+<span id="cb71-6"><a href="#cb71-6" aria-hidden="true" tabindex="-1"></a>mp_scaled_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(mp_data_mat)</span>
+<span id="cb71-7"><a href="#cb71-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Now, every row is a cell with 2000 genes/features/predictors. </span></span>
+<span id="cb71-8"><a href="#cb71-8" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(mp_scaled_df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11226  2000</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb73"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb73-1"><a href="#cb73-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Annotate Metadata &amp; Format Target Variable</span></span>
+<span id="cb73-2"><a href="#cb73-2" aria-hidden="true" tabindex="-1"></a>mp_scaled_df<span class="sc">$</span>cell_type    <span class="ot">&lt;-</span> <span class="fu">factor</span>(MP<span class="sc">$</span>Condition) <span class="co"># Target variable formatted as factor</span></span>
+<span id="cb73-3"><a href="#cb73-3" aria-hidden="true" tabindex="-1"></a>mp_scaled_df<span class="sc">$</span>cell_barcode <span class="ot">&lt;-</span> <span class="fu">rownames</span>(mp_scaled_df)</span>
+<span id="cb73-4"><a href="#cb73-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-5"><a href="#cb73-5" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>) <span class="co"># Recommended for reproducibility</span></span>
+<span id="cb73-6"><a href="#cb73-6" aria-hidden="true" tabindex="-1"></a>mp_split <span class="ot">&lt;-</span> <span class="fu">initial_split</span>(mp_scaled_df, <span class="at">strata =</span> <span class="st">"cell_type"</span>)</span>
+<span id="cb73-7"><a href="#cb73-7" aria-hidden="true" tabindex="-1"></a>mp_train <span class="ot">&lt;-</span> <span class="fu">training</span>(mp_split)</span>
+<span id="cb73-8"><a href="#cb73-8" aria-hidden="true" tabindex="-1"></a>mp_test  <span class="ot">&lt;-</span> <span class="fu">testing</span>(mp_split)</span>
+<span id="cb73-9"><a href="#cb73-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-10"><a href="#cb73-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 10 fold cross validation</span></span>
+<span id="cb73-11"><a href="#cb73-11" aria-hidden="true" tabindex="-1"></a>mp_folds <span class="ot">&lt;-</span> <span class="fu">vfold_cv</span>(mp_train, <span class="at">v =</span> <span class="dv">10</span>)</span>
+<span id="cb73-12"><a href="#cb73-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-13"><a href="#cb73-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-14"><a href="#cb73-14" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. Recipe Configuration (Preprocessing)</span></span>
+<span id="cb73-15"><a href="#cb73-15" aria-hidden="true" tabindex="-1"></a>mp_recipe <span class="ot">&lt;-</span> <span class="fu">recipe</span>(<span class="at">formula =</span> cell_type <span class="sc">~</span> ., <span class="at">data =</span> mp_train) <span class="sc">%&gt;%</span></span>
+<span id="cb73-16"><a href="#cb73-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">update_role</span>(cell_barcode, <span class="at">new_role =</span> <span class="st">"ID"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb73-17"><a href="#cb73-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_zv</span>(<span class="fu">all_predictors</span>())</span>
+<span id="cb73-18"><a href="#cb73-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-19"><a href="#cb73-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-20"><a href="#cb73-20" aria-hidden="true" tabindex="-1"></a><span class="co"># 5. Model Specification &amp; Workflow Pipeline</span></span>
+<span id="cb73-21"><a href="#cb73-21" aria-hidden="true" tabindex="-1"></a>mp_spec <span class="ot">&lt;-</span> <span class="fu">rand_forest</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb73-22"><a href="#cb73-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"randomForest"</span>, <span class="at">importance =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb73-23"><a href="#cb73-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_mode</span>(<span class="st">"classification"</span>)</span>
+<span id="cb73-24"><a href="#cb73-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-25"><a href="#cb73-25" aria-hidden="true" tabindex="-1"></a>mp_workflow <span class="ot">&lt;-</span> <span class="fu">workflow</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb73-26"><a href="#cb73-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_recipe</span>(mp_recipe) <span class="sc">%&gt;%</span> </span>
+<span id="cb73-27"><a href="#cb73-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_model</span>(mp_spec)</span>
+<span id="cb73-28"><a href="#cb73-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-29"><a href="#cb73-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-30"><a href="#cb73-30" aria-hidden="true" tabindex="-1"></a><span class="co"># 6. Model Training</span></span>
+<span id="cb73-31"><a href="#cb73-31" aria-hidden="true" tabindex="-1"></a>mp_fit <span class="ot">&lt;-</span> <span class="fu">fit</span>(mp_workflow, <span class="at">data =</span> mp_train)</span>
+<span id="cb73-32"><a href="#cb73-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-33"><a href="#cb73-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-34"><a href="#cb73-34" aria-hidden="true" tabindex="-1"></a><span class="co"># 7. Model Evaluation (Confusion Matrix)</span></span>
+<span id="cb73-35"><a href="#cb73-35" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(mp_fit, <span class="at">new_data =</span> mp_test) <span class="sc">%&gt;%</span></span>
+<span id="cb73-36"><a href="#cb73-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(mp_test <span class="sc">%&gt;%</span> <span class="fu">select</span>(cell_type)) <span class="sc">%&gt;%</span></span>
+<span id="cb73-37"><a href="#cb73-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">conf_mat</span>(<span class="at">truth =</span> cell_type, <span class="at">estimate =</span> .pred_class)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           Truth
+Prediction  Cirrhotic Healthy
+  Cirrhotic      1165      39
+  Healthy          97    1506</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb75"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb75-1"><a href="#cb75-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 8. Feature Importance Visualization</span></span>
+<span id="cb75-2"><a href="#cb75-2" aria-hidden="true" tabindex="-1"></a> mp_fit <span class="sc">%&gt;%</span></span>
+<span id="cb75-3"><a href="#cb75-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">extract_fit_parsnip</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb75-4"><a href="#cb75-4" aria-hidden="true" tabindex="-1"></a>  vip<span class="sc">::</span><span class="fu">vip</span>(<span class="at">geom =</span> <span class="st">"col"</span>, <span class="at">num_features =</span> <span class="dv">30</span>) <span class="sc">+</span> </span>
+<span id="cb75-5"><a href="#cb75-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb75-6"><a href="#cb75-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Random Forest Variable Importance (MP)"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Fibrosis_2_files/figure-html/unnamed-chunk-40-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="part-13-therapeutic-gene-targets" class="level3">
+<h3 class="anchored" data-anchor-id="part-13-therapeutic-gene-targets">Part 13: Therapeutic Gene Targets</h3>
+<p>Identification of Gene targets via intersection of important genes identified by random forest and up-regulated gene differential list</p>
+<section id="endothelial-cirrhotic-target-genes" class="level4">
+<h4 class="anchored" data-anchor-id="endothelial-cirrhotic-target-genes">Endothelial Cirrhotic Target Genes</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb76"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true" tabindex="-1"></a>top_20_features <span class="ot">&lt;-</span> endothelial_fit <span class="sc">%&gt;%</span></span>
+<span id="cb76-2"><a href="#cb76-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">extract_fit_parsnip</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb76-3"><a href="#cb76-3" aria-hidden="true" tabindex="-1"></a>  vip<span class="sc">::</span><span class="fu">vi</span>() <span class="sc">%&gt;%</span>             <span class="co"># Returns a tibble with 'Variable' and 'Importance'</span></span>
+<span id="cb76-4"><a href="#cb76-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">30</span>) <span class="sc">%&gt;%</span>              <span class="co"># Takes the top 20 highest importance features</span></span>
+<span id="cb76-5"><a href="#cb76-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(Variable)</span>
+<span id="cb76-6"><a href="#cb76-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb76-7"><a href="#cb76-7" aria-hidden="true" tabindex="-1"></a>Endothelial_DEG_up_regulated <span class="ot">=</span> <span class="fu">FindMarkers</span>(Endothelial,<span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">group.by =</span> <span class="st">"Condition"</span>, <span class="at">ident.1 =</span> <span class="st">"Cirrhotic"</span>, <span class="at">ident.2 =</span> <span class="st">"Healthy"</span>) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(avg_log2FC <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> p_val_adj <span class="sc">&lt;</span> <span class="fl">0.05</span>)</span>
+<span id="cb76-8"><a href="#cb76-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb76-9"><a href="#cb76-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb76-10"><a href="#cb76-10" aria-hidden="true" tabindex="-1"></a><span class="fu">intersect</span>(<span class="fu">rownames</span>(Endothelial_DEG_up_regulated), top_20_features)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "VWA1"    "VWF"     "RPL36A"  "RPS26"   "RPL12"   "RPL41"   "IGFBP7" 
+ [8] "RGCC"    "FABP4"   "CXorf36" "SOX18"  </code></pre>
+</div>
+</div>
+</section>
+<section id="mesenchymal-cirrhotic-target-genes" class="level4">
+<h4 class="anchored" data-anchor-id="mesenchymal-cirrhotic-target-genes">Mesenchymal Cirrhotic Target Genes</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb78"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a>top_20_features_Mesenchymal <span class="ot">&lt;-</span> mesenchymal_fit <span class="sc">%&gt;%</span></span>
+<span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">extract_fit_parsnip</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb78-3"><a href="#cb78-3" aria-hidden="true" tabindex="-1"></a>  vip<span class="sc">::</span><span class="fu">vi</span>() <span class="sc">%&gt;%</span>             <span class="co"># Returns a tibble with 'Variable' and 'Importance'</span></span>
+<span id="cb78-4"><a href="#cb78-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">30</span>) <span class="sc">%&gt;%</span>              <span class="co"># Takes the top 20 highest importance features</span></span>
+<span id="cb78-5"><a href="#cb78-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(Variable)</span>
+<span id="cb78-6"><a href="#cb78-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb78-7"><a href="#cb78-7" aria-hidden="true" tabindex="-1"></a>Mesenchymal_DEG_up_regulated <span class="ot">=</span> <span class="fu">FindMarkers</span>(Mesenchymal,<span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">group.by =</span> <span class="st">"Condition"</span>, <span class="at">ident.1 =</span> <span class="st">"Cirrhotic"</span>, <span class="at">ident.2 =</span> <span class="st">"Healthy"</span>) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(avg_log2FC <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> p_val_adj <span class="sc">&lt;</span> <span class="fl">0.05</span>)</span>
+<span id="cb78-8"><a href="#cb78-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb78-9"><a href="#cb78-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb78-10"><a href="#cb78-10" aria-hidden="true" tabindex="-1"></a><span class="fu">intersect</span>(<span class="fu">rownames</span>(Mesenchymal_DEG_up_regulated), top_20_features_Mesenchymal)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "IGFBP7"  "XIST"    "MT-CYB"  "MT-ND1"  "IFITM3"  "ID3"     "MT-ND3" 
+ [8] "TIMP1"   "MT-ND2"  "CST3"    "MGP"     "IFITM2"  "IFITM1"  "MT-ATP6"
+[15] "SOD3"    "ID1"     "CSRP2"   "BGN"     "VWF"    </code></pre>
+</div>
+</div>
+</section>
+<section id="mp-cirrhotic-target-genes" class="level4">
+<h4 class="anchored" data-anchor-id="mp-cirrhotic-target-genes">MP Cirrhotic Target Genes</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb80"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a>top_20_features_MP <span class="ot">&lt;-</span> mp_fit <span class="sc">%&gt;%</span></span>
+<span id="cb80-2"><a href="#cb80-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">extract_fit_parsnip</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb80-3"><a href="#cb80-3" aria-hidden="true" tabindex="-1"></a>  vip<span class="sc">::</span><span class="fu">vi</span>() <span class="sc">%&gt;%</span>             <span class="co"># Returns a tibble with 'Variable' and 'Importance'</span></span>
+<span id="cb80-4"><a href="#cb80-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">30</span>) <span class="sc">%&gt;%</span>              <span class="co"># Takes the top 20 highest importance features</span></span>
+<span id="cb80-5"><a href="#cb80-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(Variable)</span>
+<span id="cb80-6"><a href="#cb80-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb80-7"><a href="#cb80-7" aria-hidden="true" tabindex="-1"></a>MP_DEG_up_regulated <span class="ot">=</span> <span class="fu">FindMarkers</span>(MP,<span class="at">assay =</span> <span class="st">"RNA"</span>, <span class="at">group.by =</span> <span class="st">"Condition"</span>, <span class="at">ident.1 =</span> <span class="st">"Cirrhotic"</span>, <span class="at">ident.2 =</span> <span class="st">"Healthy"</span>) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(avg_log2FC <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> p_val_adj <span class="sc">&lt;</span> <span class="fl">0.05</span>)</span>
+<span id="cb80-8"><a href="#cb80-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb80-9"><a href="#cb80-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb80-10"><a href="#cb80-10" aria-hidden="true" tabindex="-1"></a><span class="fu">intersect</span>(<span class="fu">rownames</span>(MP_DEG_up_regulated), top_20_features_MP)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "IGLC3"    "IFITM3"   "IGFBP7"   "C3"       "DEFB1"    "VWF"     
+ [7] "IGLC2"    "CLU"      "IGKC"     "FABP4"    "SPARCL1"  "IER3"    
+[13] "SNHG25"   "CCL21"    "IGHG1"    "MGP"      "IGHM"     "IGHG3"   
+[19] "MTRNR2L1" "HLA-DRB5"</code></pre>
+</div>
+</div>
+<table class="table">
+<tbody>
+<tr class="odd">
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
