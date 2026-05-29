@@ -1,0 +1,1006 @@
+---
+title: "scRNA-seq Fibrosis Dataset Analysis"
+format: html
+editor: visual
+---
+
+### Abstract
+
+Currently there are no effective antifibrotic therapies for liver cirrhosis, a major killer worldwide. To obtain a cellular resolution of directly-relevant pathogenesis and to inform therapeutic design, we profile the transcriptomes of over 100,000 human single cells, yielding molecular definitions for non-parenchymal cell types present in healthy and cirrhotic human liver. We uncover a novel scar-associated TREM2^+^CD9^+^ macrophage subpopulation, which expands in liver fibrosis, differentiates from circulating monocytes and is pro-fibrogenic. We also define novel ACKR1^+^ and PLVAP^+^ endothelial cells which expand in cirrhosis, are topographically scar-restricted and enhance leucocyte transmigration. Multi-lineage ligand-receptor modelling of interactions between the novel scar-associated macrophages, endothelial cells and PDGFRα^+^ collagen-producing mesenchymal cells reveals intra-scar activity of several pro-fibrogenic pathways including TNFRSF12A, PDGFR and NOTCH signalling. Our work dissects unanticipated aspects of the cellular and molecular basis of human organ fibrosis at a single-cell level, and provides the conceptual framework required to discover rational therapeutic targets in liver cirrhosis.
+
+### Dataset Design
+
+Single-cell transcriptomic data were analyzed from **5 healthy livers, 5 cirrhotic livers, and 4 PBMC samples** from cirrhotic patients. In parallel, single-cell transcriptomic data were also evaluated on **hepatic macrophages isolated from healthy mice and from mice following chronic carbon tetrachloride administration** to model the disease.
+
+### Analysis Design
+
+The primary objective of this study was to isolate reliable target genes in the human cirrhotic liver using scRNA-seq data. **1) Data retrieval from the provided accession number GSE136103 and creation of Seurat object** was first performed to establish the computational framework. **2) QC of the scRNA-seq using the "Seurat" package** was then conducted to filter out low-quality cells, followed immediately by **3) Batch Correction and Integration** to eliminate technical variation. **4) Dimension Reduction** was executed via PCA and UMAP/t-SNE for 2D mapping, enabling the **5) Visualization of Markers associated with the data and annotation of celltypes**. **6) Assess which of celltypes are more profound in cirrhotic tissue vs healthy tissue**.
+
+To understand transcriptomic shifts, the pipeline was designed to **7) Conduct Gene Differentials for each celltype and overall for all cells**, followed by **8) Finding Gene Ontology Terms and Building GO terms plots** to resolve functional biological insights. Given their critical roles in liver pathology, specialized sub-analyses were performed, including **9) Endothelial subcluster annotation and analysis**, **10) Mesenchymal subcluster annotation and analysis**, and **11) Macrophage subcluster annotation and analysis**. A **12) Random forest implementation to select for features that classify cirrhosis cells and healthy cells accurately on Endothelial, Mesenchyme and MP cluster** was then utilized to leverage machine learning for biomarker discovery. This culminated in the **13) Identificaton of features that are improtant and up-regulated via DEGs** to yield a refined, high-confidence set of prioritized targets for liver cirrhosis.
+
+### Load Necessary R Packages for this analysis
+
+```{r, include=F}
+library(Seurat)
+library(harmony)
+library(DoubletFinder)
+library(tidyverse)
+library(tidymodels)
+library(scCustomize) # for plotting
+library(patchwork)
+library("org.Hs.eg.db")
+library(clusterProfiler)
+library(rsample)
+library(recipes)
+library(parsnip)
+library(workflows)
+library(yardstick)
+set.seed(2702)
+```
+
+### Set Working Directory
+
+Set the directory to where the scRNA-seq data is located. Please make sure no other files exist in this directory as it will not be able to create seurat objects.
+
+```{r, include=F}
+setwd("/projects/standard/lniedern/ali00724/Liver_Fibrosis_Data")
+
+```
+
+### Part 1: Data Curation
+
+For each sample a Seurat object has been created.
+
+```{r, include = F}
+
+# 1. List all raw data files in the specified directory and set the working directory
+all_files <- list.files(path = "/projects/standard/lniedern/ali00724/Liver_Fibrosis_Data")
+setwd("/projects/standard/lniedern/ali00724/Liver_Fibrosis_Data")
+
+# 2. Extract unique sample prefixes by stripping out the standard 10X file extensions
+prefixes <- unique(sub("_(barcodes\\.tsv|genes\\.tsv|matrix\\.mtx)$", "", all_files))
+
+# Initialize an empty list to store individual Seurat objects
+seurat_list <- list()
+
+# 3. Loop through each unique prefix to load data and construct Seurat objects
+for (prefix in prefixes) {
+  message("Currently processing: ", prefix)
+  
+  # Construct specific file paths for the MTX matrix, features (genes), and barcodes
+  matrix_file   <- paste0(prefix, "_matrix.mtx")
+  features_file <- paste0(prefix, "_genes.tsv")
+  barcodes_file <- paste0(prefix, "_barcodes.tsv")
+  
+  # Read the sparse matrix components using Seurat's ReadMtx function
+  counts <- ReadMtx(mtx = matrix_file, features = features_file, cells = barcodes_file)
+  
+  # Create the Seurat object, filtering out genes expressed in fewer than 3 cells
+  obj <- CreateSeuratObject(counts = counts, project = prefix, min.cells = 3)
+
+  # Assign the experimental condition (Healthy vs Cirrhotic) based on the file prefix naming convention
+  if (grepl("healthy", prefix)) {
+    obj$Condition <- "Healthy"
+  } else {
+    obj$Condition <- "Cirrhotic"
+  }
+  
+  # Store the unique sample ID within the object metadata
+  obj$SampleID <- prefix
+  
+  # Append the fully annotated Seurat object to the master list
+  seurat_list[[prefix]] <- obj
+}
+```
+
+#### Calculate Mitochondrial Percentage for each cell in each sample
+
+```{r}
+seurat_list <- lapply(X = seurat_list, FUN = function(x) {
+  x <- PercentageFeatureSet(x, pattern = "^MT-", col.name = "percent.mt")
+})
+```
+
+#### Visualize the number of RNA counts
+
+To evaluate sample quality, the RNA counts will be visualized using a violin plot to establish an upper threshold for filtering out anomalies. This step serves as the primary filter to eliminate potential outliers, doublets, or triplets from the dataset.
+
+For this phase of the analysis, only a single representative sample will be inspected, as this specific sample will serve as the anchor reference for downstream multi-sample integration. Other standard quality metrics will not be viewed or adjusted during this visual inspection, as the filtering thresholds have already been explicitly defined by the original publication associated with this dataset.
+
+```{r}
+VlnPlot(seurat_list[[1]], features = c("nFeature_RNA")) 
+```
+
+### Part 2: Sample Quality Control/Pre-processing
+
+To refine the dataset, cells with fewer than 300 detected genes (`nFeature_RNA`) or a mitochondrial gene percentage exceeding 30% will be removed to eliminate low-quality or dying cells. Conversely, an upper threshold will be applied to exclude cells with more than 4,000 detected genes, targeting potential multiplets.
+
+Following these manual thresholds, DoubletFinder will be implemented to computationally identify and remove remaining doublets. Based on community benchmarks and empirical data discussed on relevant GitHub repositories for this technology, an expected doublet rate of 3% will be utilized based on the typical cell density per sample in this dataset.
+
+```{r, include=F}
+
+# Process each Seurat object in the list sequentially using lapply
+seurat_list <- lapply(X = seurat_list, FUN = function(x) {
+  
+  # 1. Filter out low-quality cells, dying cells, and potential multiplets based on predefined thresholds
+  x <- subset(x, nFeature_RNA > 300 & percent.mt < 30 & nFeature_RNA < 4000)
+  
+  # 2. Normalize gene expression counts using global scaling normalization
+  x <- NormalizeData(x)
+  
+  # 3. Identify the top 2000 highly variable genes that drive biological variation across cells
+  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
+  
+  # 4. Scale and center the expression matrix so that genes have equal weight in downstream analysis
+  x <- ScaleData(x)
+  
+  # 5. Perform Principal Component Analysis (PCA) for linear dimensionality reduction
+  x <- RunPCA(x)
+  
+  # 6. Run Uniform Manifold Approximation and Projection (UMAP) using the first 10 PCs for 2D visualization
+  x <- RunUMAP(x, dims = 1:10)
+  
+  # 7. Calculate the expected number of doublets per sample assuming a 3% doublet rate
+  nExp_poi <- round(0.03 * nrow(x@meta.data))
+  
+  # 8. Run DoubletFinder to computationally predict doublets using standard hyperparameter settings
+  x <- doubletFinder(x, PCs = 1:10, pN = 0.25, pK = 0.09, nExp = nExp_poi, reuse.pANN = NULL, sct = FALSE)
+  
+  # 9. Standardize the metadata column name where DoubletFinder stores classification outputs
+  colnames(x@meta.data)[8] = "Doublet_info"
+  
+  # 10. Subset the Seurat object to retain only high-confidence single cells, discarding predicted doublets
+  x = subset(x, Doublet_info == "Singlet")
+})
+
+```
+
+### Part 3: Batch Correction & Integration of Samples
+
+Seurat integration steps do batch correction thus we do not need to take any steps. I used the first sample as reference to do the integration.
+
+```{r, include=F}
+# 1. Select the top 2000 highly variable features that are consistently shared across all samples
+features <- SelectIntegrationFeatures(object.list = seurat_list, nfeatures = 2000)
+
+# 2. Identify integration anchors across datasets, utilizing the first sample as the reference anchor
+seurat.anchors <- FindIntegrationAnchors(object.list = seurat_list, anchor.features = features, reference = 1)
+
+# 3. Mathematically batch-correct and merge the samples based on the identified anchor points
+seurat.combined <- IntegrateData(anchorset = seurat.anchors)
+
+# 4. Set the default assay to "integrated" to ensure downstream clustering and dimensionality reduction utilize the batch-corrected values
+seurat.combined@active.assay <- "integrated"
+```
+
+### Part 4: Dimensional Reduction, Clustering
+
+We have scaled the batch corrected counts, run principal components analysis and used harmony which is notorious for robust clustering. We calculated neighbors based on 15 harmony dimensions and clusters were calculated at 0.4. Finally, a UMAP was created based on the harmony dimensions.
+
+```{r, include  = F}
+# 1. Scale and center the integrated expression data across all cells
+seurat.combined = ScaleData(seurat.combined)
+
+# 2. Perform initial linear dimensionality reduction using Principal Component Analysis (PCA)
+seurat.combined = RunPCA(seurat.combined)
+
+# 3. Apply Harmony integration to further blend samples and remove batch effects across experimental runs (orig.ident)
+seurat.combined = RunHarmony(seurat.combined, group.by.vars = "orig.ident")
+
+# 4. Construct a Shared Nearest Neighbor (SNN) graph based on the first 15 Harmony dimensions
+seurat.combined = FindNeighbors(seurat.combined, dims = 1:15, reduction = "harmony")
+
+# 5. Cluster cells using the Louvain algorithm at a moderate resolution of 0.4
+seurat.combined = FindClusters(seurat.combined, resolution = 0.4)
+
+# 6. Run non-linear dimensionality reduction (UMAP) on the Harmony embeddings for 2D visualization
+seurat.combined = RunUMAP(seurat.combined, dims = 1:15, reduction = "harmony")
+
+# 7. Generate a UMAP dimensional reduction plot with cluster labels displayed
+DimPlot(seurat.combined, label = T)
+
+# 8. Revert the active assay to "RNA" to ensure downstream differential expression uses raw/normalized counts
+seurat.combined@active.assay = "RNA"
+
+# 9. Merge separated data layers (e.g., across batches) into a unified matrix for comprehensive analysis
+seurat.combined = JoinLayers(seurat.combined)
+
+```
+
+### Part 5: Celltype annotation
+
+Cells were annotated based on the markers provided by article associated with this dataset.
+
+#### Curate Marker Vector for each celltype
+
+```{r, include = F}
+mp_markers      <- c("FCN1", "VCAN", "C1QC", "IL1B", "MNDA", "CPVL", "MS4A7", "MSR1", "CD163", "CYBB", "CSF2RA", "CLEC10A")
+pdc_markers     <- c("IL3RA", "LRRC26", "PTCRA", "CLEC4C")
+ilc_markers     <- c("KLRF1", "KLRC1", "PRF1", "FGFBP2")
+cycling_markers <- c("MKI67", "TOP2A", "UBE2C", "RRM2")
+t_markers       <- c("TRAC", "CD2")
+b_markers       <- c("CD79A", "MS4A1")
+plasma_markers  <- c("FCRL5", "JSRP1")
+mast_markers    <- c("TPSAB1", "CPA3")
+endo_markers    <- c("CLEC14A", "PLVAP", "EGFL7", "VWF", "HSPG2", "EMCN", "FCN3", "OIT3", "CLEC4G", "CLEC4M")
+epithelia_markers    <- c("ALB", "F2", "KNG1", "PRAP1", "TTR", "HSD17B6", "ORM1", "ITIH1", "TF", "CYP4A11", "APOC2", "AGXT")
+mesenchyma_markers    <- c("TAGLN", "RGS5", "ACTA2", "PDGFRB", "TIMP1", "LUM", "COL3A1", "PDGFRA", "COL1A2", "CCL19")
+```
+
+#### Visualize the Mononuclear Phagocyte Marker in a Dot Plot
+
+```{r}
+DotPlot(seurat.combined, assay = "RNA", features = mp_markers) + RotatedAxis() # Cluster 3,6,8
+```
+
+#### Visualize the Dendritic Marker in a Dot Plot
+
+```{r}
+DotPlot(seurat.combined, assay = "RNA", features = pdc_markers) + RotatedAxis()
+# Cluster 16 pDC
+```
+
+#### Visualize the Innate Lymphoid Cell Marker in a Dot Plot
+
+```{r}
+DotPlot(seurat.combined, assay = "RNA", features = ilc_markers) + RotatedAxis()
+# Cluster 5,1 ILC
+```
+
+#### Visualize the Cyclic Marker in a Dot Plot
+
+```{r}
+DotPlot(seurat.combined, assay = "RNA", features = cycling_markers) + RotatedAxis()
+```
+
+#### Visualize the T Cell Marker in a Dot Plot
+
+```{r}
+DotPlot(seurat.combined, assay = "RNA", features = t_markers) + RotatedAxis()
+# Cluster 0,2 T Cell
+```
+
+#### Visualize the B Cell Marker in a Dot Plot
+
+```{r}
+DotPlot(seurat.combined, assay = "RNA", features = b_markers) + RotatedAxis()
+# Cluster 10 B Cell
+
+```
+
+#### Visualize the Plasma Cell Marker in a Dot Plot
+
+```{r}
+DotPlot(seurat.combined, assay = "RNA", features = plasma_markers) + RotatedAxis()
+# Cluster 12 Plasma Cell
+```
+
+#### Visualize the Mast Cell Marker in a Dot Plot
+
+```{r}
+DotPlot(seurat.combined, assay = "RNA", features = mast_markers) + RotatedAxis()
+# Cluster 13 Mast Cell
+
+```
+
+#### Visualize the Endothelial Marker in a Dot Plot
+
+```{r}
+DotPlot(seurat.combined, assay = "RNA", features = endo_markers) + RotatedAxis()
+# Cluster 4,7 Endothelial 
+
+```
+
+#### Visualize the Epithelial Marker in a Dot Plot
+
+```{r}
+DotPlot(seurat.combined, assay = "RNA", features = epithelia_markers) + RotatedAxis()
+# Cluster 15 Epithelial
+
+```
+
+#### Visualize the Mesenchymal Marker in a Dot Plot
+
+```{r}
+DotPlot(seurat.combined, assay = "RNA", features = mesenchyma_markers) + RotatedAxis()
+# Cluster 13,11 Mesenchymal
+
+```
+
+#### Annotate the Celltypes
+
+```{r}
+celltype = c("T Cell", "ILC", "T Cell", "MP", "Endothelial", "ILC", "MP", "Endothelial", "MP", "Epithelial", "B Cell", "Mesenchyme", "Plasma Cell", "Mast Cell", "Cycling", "Epithelial", "pDC")
+names(celltype) <- levels(seurat.combined)
+seurat.combined <- RenameIdents(seurat.combined, celltype)
+
+
+```
+
+#### Visualize the Dimensional Plot with Celltype Annotations
+
+```{r}
+DimPlot(seurat.combined, label = T, split.by = "Condition")
+DimPlot(seurat.combined, label = T)
+```
+
+### Part 6: Assess cell composition by Condition
+
+Based on the cellular composition analysis, cirrhotic tissue exhibits a marked increase in **Endothelial cells, Mononuclear Phagocytes (MPs), Epithelial cells, B Cells, Plasma Cells, Mast Cells, Cycling Cells, and Dendritic Cells** compared to healthy tissue. Conversely, healthy tissue retains a higher proportion of **T Cells, Innate Lymphoid Cells (ILCs), and Mesenchymal Cells**.
+
+```{r}
+# Generate frequency table with meaningful column names
+cell_counts <- table(seurat.combined@active.ident, seurat.combined$Condition)
+cell_counts_df <- as.data.frame(cell_counts)
+
+# Rename default 'Var1' and 'Var2' columns for clarity
+colnames(cell_counts_df)[colnames(cell_counts_df) == "Var1"] <- "CellType"
+colnames(cell_counts_df)[colnames(cell_counts_df) == "Var2"] <- "Condition"
+
+# Initialize and assign total cell counts per condition
+cell_counts_df$TotalCells = 1
+cell_counts_df[cell_counts_df$Condition == "Cirrhotic", ]$TotalCells = 24716
+cell_counts_df[cell_counts_df$Condition == "Healthy", ]$TotalCells = 33848
+
+# Calculate percentage
+cell_counts_df$Percentage = cell_counts_df$Freq / cell_counts_df$TotalCells * 100
+
+# Plot using the updated, clean variable names
+ggplot(cell_counts_df, aes(y = Percentage, x = CellType, fill = Condition)) + 
+  geom_bar(stat = "identity", position = "dodge") + 
+  RotatedAxis() + 
+  xlab("Cell Type") + 
+  ylab("Percentage of Cells") + 
+  guides(fill = guide_legend(title = "Condition"))
+
+
+
+```
+
+### Part 7: Conduct Gene Differential on all cells by condition ( Cirrhotic vs Health)
+
+```{r}
+# Find markers comparing Cirrhotic vs Healthy
+cirrhotic_vs_healthy_markers = FindMarkers(seurat.combined, assay = "RNA", group.by = "Condition", ident.1 = "Cirrhotic", ident.2 = "Healthy")
+
+# Filter for significantly up-regulated genes
+cirrhotic_up_regulated = cirrhotic_vs_healthy_markers %>% filter(avg_log2FC > 0 & p_val_adj < 0.05)
+
+# Check the dimensions (4413 genes identified as upregulated in cirrhotic tissue)
+dim(cirrhotic_up_regulated)
+```
+
+### Part 8: Finding Gene Ontology Terms for Each Celltype Based on Significant DEGs for each celltype (Cirrhotic vs Healthy)
+
+```{r, include=F}
+# set identities if needed
+# Idents(seurat.combined) <- "celltype"
+
+
+organism <- org.Hs.eg.db
+
+# all idents
+idents <- levels(Idents(seurat.combined))
+
+# output lists
+marker_list <- list()
+gsea_list <- list()
+
+for (id in idents) {
+  
+  cat("\nProcessing:", id, "\n")
+  
+  # subset current ident
+  sub_obj <- subset(seurat.combined, idents = id)
+  
+  # ensure both conditions exist
+  conds <- unique(sub_obj$Condition)
+  
+  if (!all(c("Cirrhotic", "Healthy") %in% conds)) {
+    cat("Skipping", id, "- missing one condition\n")
+    next
+  }
+  
+  # differential expression
+  mks <- FindMarkers(
+    sub_obj,
+    assay = "RNA",
+    group.by = "Condition",
+    ident.1 = "Cirrhotic",
+    ident.2 = "Healthy",
+    logfc.threshold = 0,
+    min.pct = 0
+  )
+  
+  # save all markers
+  marker_list[[id]] <- mks
+  
+  # keep significant genes only
+  df <- mks %>%
+    rownames_to_column("gene") %>%
+    filter(!is.na(avg_log2FC)) %>%
+    filter(p_val_adj < 0.05) %>%
+    dplyr::select(gene, avg_log2FC)
+  
+  # skip if too few significant genes
+  if (nrow(df) < 10) {
+    cat("Skipping GSEA for", id, "- too few significant genes\n")
+    next
+  }
+  
+  # create ranked vector
+  original_gene_list <- df$avg_log2FC
+  names(original_gene_list) <- df$gene
+  
+  # remove NA
+  gene_list <- na.omit(original_gene_list)
+  
+  # remove duplicate genes
+  gene_list <- gene_list[!duplicated(names(gene_list))]
+  
+  # sort decreasing (required for GSEA)
+  gene_list <- sort(gene_list, decreasing = TRUE)
+  
+  cat("Running GSEA for", id, "with", length(gene_list), "genes\n")
+  
+  # GSEA GO
+  gse <- gseGO(
+    geneList       = gene_list,
+    ont            = "ALL",
+    keyType        = "SYMBOL",
+    nPerm          = 10000,
+    minGSSize      = 3,
+    maxGSSize      = 800,
+    pvalueCutoff   = 0.05,
+    verbose        = TRUE,
+    OrgDb          = organism,
+    pAdjustMethod  = "none"
+  )
+  
+  # save GSEA result
+  gsea_list[[id]] <- gse
+}
+
+```
+
+#### Top 10 Go Terms Plot for Each Celltype
+
+```{r, include=T}
+
+# Loop through each cell type in the list by its name
+for (cell_type in names(gsea_list)) {
+  
+  # Create a clean file name (e.g., "GSEA_T_Cell_dotplot.pdf")
+  file_name <- paste0("GSEA_", gsub(" ", "_", cell_type), "_dotplot.pdf")
+  
+  # 1. Open the PDF graphics device with height 8 and width 8
+  pdf(file_name, height = 8, width = 8)
+  
+  # 2. Generate and print the dotplot for the current cell type
+  print(
+    dotplot(gsea_list[[cell_type]], 
+            showCategory = 10, 
+            title = paste("Enriched Pathways", cell_type), 
+            split = ".sign") + 
+    facet_grid(.~.sign)
+  )
+  
+  # 3. Close the device to save the file
+  dev.off()
+  
+  message("Successfully saved: ", file_name)
+}
+```
+
+### Part 9: Endothelial Celltype Subclustering
+
+```{r, include = F}
+# 1. Isolate the main Endothelial cell cluster from the integrated dataset
+Endothelial <- subset(seurat.combined, idents = "Endothelial")
+
+# 2. Reset the active assay to "RNA" for raw/normalized expression metrics
+DefaultAssay(Endothelial) <- "RNA"
+
+# 3. Identify the top 2000 highly variable features specific to the endothelial lineage
+Endothelial <- FindVariableFeatures(Endothelial, selection.method = "vst", nfeatures = 2000)
+
+# 4. Scale and center the expression matrix for downstream dimensionality reduction
+Endothelial <- ScaleData(Endothelial)
+
+# 5. Compute the first 30 Principal Components (PCs) using the lineage-specific variable features
+Endothelial <- RunPCA(Endothelial, features = VariableFeatures(object = Endothelial), npcs = 30)
+
+# 6. Construct an SNN graph using the top 15 principal components
+Endothelial <- FindNeighbors(Endothelial, dims = 1:15)
+
+# 7. Cluster the endothelial cells using a conservative resolution of 0.2 to identify major subclusters
+Endothelial <- FindClusters(Endothelial, resolution = 0.2)
+
+# 8. Generate a UMAP non-linear dimensional reduction layout for 2D visualization
+Endothelial <- RunUMAP(Endothelial, dims = 1:15)
+
+# 9. Generate an alternative t-SNE dimensional reduction layout for comprehensive cluster viewing
+Endothelial <- RunTSNE(Endothelial, dims = 1:15)
+```
+
+#### Endothelial Subcluster Marker Dotplot and Annotation
+
+```{r}
+# 1. Define a comprehensive panel of canonical endothelial lineage and subset markers
+all_endo_markers <- c(
+  "CLEC4G", "CLEC4M", "STAB2", "MRC1", "CD14", "LYVE1", "CCL21", "PROX1", "PDPN", 
+  "CPE", "CD320", "BMPER", "RSPO3", "WNT2", "LHX6", "HTR2B", "AIF1L", "SOX17", 
+  "PLVAP", "VWA1", "ACKR1"
+)
+
+# 2. Visualize marker expression profiles across clusters via a dot plot, rotating x-axis labels for readability
+DotPlot(Endothelial, assay = "RNA", features = all_endo_markers) + RotatedAxis()
+
+# 3. Create a vector mapping the numerical clusters to specific endothelial subclusters
+celltype <- c("Endo6", "Endo5", "Endo6", "Endo7", "Endo1", "Endo3", "Endo2", "Endo4", "Endo6")
+
+# 4. Assign the original cluster numbers as names to the mapping vector
+names(celltype) <- levels(Endothelial)
+
+# 5. Rename the active identities in the Endothelial Seurat object to reflect the new subcluster labels
+Endothelial <- RenameIdents(Endothelial, celltype)
+```
+
+#### Endothelial Subcluster and Cell Composition Visualization
+
+Endo6, Endo7 and Endo2 are subcluster that are more prominent in Cirrhotic tissue in comparison to healthy tissue.
+
+```{r}
+DimPlot(Endothelial, label = TRUE, split.by = "Condition")
+
+
+# Generate frequency table with meaningful column names
+cell_counts <- table(Endothelial@active.ident, Endothelial$Condition)
+cell_counts_df <- as.data.frame(cell_counts)
+
+# Rename default 'Var1' and 'Var2' columns for clarity
+colnames(cell_counts_df)[colnames(cell_counts_df) == "Var1"] <- "CellType"
+colnames(cell_counts_df)[colnames(cell_counts_df) == "Var2"] <- "Condition"
+
+# Initialize and assign total cell counts per condition
+cell_counts_df$TotalCells = 1
+cell_counts_df[cell_counts_df$Condition == "Cirrhotic", ]$TotalCells = 4409
+cell_counts_df[cell_counts_df$Condition == "Healthy", ]$TotalCells = 2580
+
+# Calculate percentage
+cell_counts_df$Percentage = cell_counts_df$Freq / cell_counts_df$TotalCells * 100
+
+# Plot using the updated, clean variable names
+ggplot(cell_counts_df, aes(y = Percentage, x = CellType, fill = Condition)) + 
+  geom_bar(stat = "identity", position = "dodge") + 
+  RotatedAxis() + 
+  xlab("Cell Type") + 
+  ylab("Percentage of Cells") + 
+  guides(fill = guide_legend(title = "Condition"))
+
+```
+
+### Part 10: Mesenchymal Subclustering
+
+```{r, include=F}
+# 1. Isolate the main Mesenchymal cell cluster from the integrated dataset
+Mesenchymal <- subset(seurat.combined, idents = "Mesenchyme")
+
+# 2. Reset the active assay to "RNA" for raw/normalized expression metrics
+DefaultAssay(Mesenchymal) <- "RNA"
+
+# 3. Identify the top 2000 highly variable features specific to the mesenchymal lineage
+Mesenchymal <- FindVariableFeatures(Mesenchymal, selection.method = "vst", nfeatures = 2000)
+
+# 4. Scale and center the expression matrix for downstream dimensionality reduction
+Mesenchymal <- ScaleData(Mesenchymal)
+
+# 5. Compute the first 30 Principal Components (PCs) using the lineage-specific variable features
+Mesenchymal <- RunPCA(Mesenchymal, features = VariableFeatures(object = Mesenchymal), npcs = 30)
+
+# 6. Construct an SNN graph using the top 15 principal components
+Mesenchymal <- FindNeighbors(Mesenchymal, dims = 1:15)
+
+# 7. Cluster the mesenchymal cells using a resolution of 0.2 to identify major subclusters
+Mesenchymal <- FindClusters(Mesenchymal, resolution = 0.2)
+
+# 8. Generate a UMAP non-linear dimensional reduction layout for 2D visualization
+Mesenchymal <- RunUMAP(Mesenchymal, dims = 1:15)
+
+# 9. Generate an alternative t-SNE dimensional reduction layout for comprehensive cluster viewing
+Mesenchymal <- RunTSNE(Mesenchymal, dims = 1:15)
+```
+
+#### Mesenchymal Marker Dotplot
+
+```{r}
+paper_meso_markers <- c(
+  "MYH11", "RGS5",                       # VSMC
+  "PDGFRA",                              # HSC
+  "COL1A1", "COL3A1", "TIMP1", "CCL2",   # SAMes (Scar-Associated)
+  "KRT19", "PDPN", "WT1", "MSLN"         # Mesothelia
+)
+DotPlot(Mesenchymal, assay = "RNA", features = paper_meso_markers) + RotatedAxis()
+```
+
+#### Mesenchymal Subcluster Annotation and Cell Composition
+
+```{r}
+
+celltype <- c("HSC", "VSMC", "SAMes", "Mesothelial")
+names(celltype) <- levels(Mesenchymal)
+Mesenchymal <- RenameIdents(Mesenchymal, celltype)
+
+# 11. Final visualization splits
+DimPlot(Mesenchymal, label = TRUE, split.by = "Condition")
+
+```
+
+#### Mesenchymal Subcluster Composition Analysis
+
+SAMes is the subcluster in the Mesenchymal cluster that has more cells in cirrhotic tissue than healthy tissue.
+
+```{r}
+# Generate frequency table with meaningful column names
+cell_counts <- table(Mesenchymal@active.ident, Mesenchymal$Condition)
+cell_counts_df <- as.data.frame(cell_counts)
+
+# Rename default 'Var1' and 'Var2' columns for clarity
+colnames(cell_counts_df)[colnames(cell_counts_df) == "Var1"] <- "CellType"
+colnames(cell_counts_df)[colnames(cell_counts_df) == "Var2"] <- "Condition"
+
+# Initialize and assign total cell counts per condition
+cell_counts_df$TotalCells = 1
+cell_counts_df[cell_counts_df$Condition == "Cirrhotic", ]$TotalCells = 344
+cell_counts_df[cell_counts_df$Condition == "Healthy", ]$TotalCells = 1290
+
+# Calculate percentage
+cell_counts_df$Percentage = cell_counts_df$Freq / cell_counts_df$TotalCells * 100
+
+# Plot using the updated, clean variable names
+ggplot(cell_counts_df, aes(y = Percentage, x = CellType, fill = Condition)) + 
+  geom_bar(stat = "identity", position = "dodge") + 
+  RotatedAxis() + 
+  xlab("Cell Type") + 
+  ylab("Percentage of Cells") + 
+  guides(fill = guide_legend(title = "Condition"))
+```
+
+### Part 11: Macrophage Cells Subclustering
+
+```{r, include=F}
+# 1. Isolate the Mononuclear Phagocyte (MP) cell cluster from the integrated dataset
+MP <- subset(seurat.combined, idents = "MP")
+
+# 2. Reset the active assay to "RNA" for raw/normalized expression metrics
+DefaultAssay(MP) <- "RNA"
+
+# 3. Identify the top 2000 highly variable features specific to the MP lineage
+MP <- FindVariableFeatures(MP, selection.method = "vst", nfeatures = 2000)
+
+# 4. Scale and center the expression matrix for downstream dimensionality reduction
+MP <- ScaleData(MP)
+
+# 5. Compute the first 30 Principal Components (PCs) using the lineage-specific variable features
+MP <- RunPCA(MP, features = VariableFeatures(object = MP), npcs = 30)
+
+# 6. Construct an SNN graph using the top 15 principal components
+MP <- FindNeighbors(MP, dims = 1:15)
+
+# 7. Cluster the MP cells using a conservative resolution of 0.2 to identify major subclusters
+MP <- FindClusters(MP, resolution = 0.2)
+
+# 8. Generate a UMAP non-linear dimensional reduction layout for 2D visualization
+MP <- RunUMAP(MP, dims = 1:15)
+
+# 9. Generate an alternative t-SNE dimensional reduction layout for comprehensive cluster viewing
+MP <- RunTSNE(MP, dims = 1:15)
+```
+
+#### MP subcluster Marker Dotplot
+
+```{r}
+
+# 9. Marker Expression DotPlot (Updated with Mononuclear Phagocyte / Macrophage lineage markers)
+paper_mp_markers <- c(
+  "S100A12", "FCN1", "MNDA", "NBEAL1", "IFITM2", "APOBEC3A", "RGS2", # TMo
+  "TREM2", "CD9",                                                   # SAMΦ
+  "C1QC", "CD5L", "CD163", "VCAM1", "MARCO", "SIGLEC1", "MERTK",    # KC
+  "ARL4C", "FCER1A", "CD1E", "LGALS2"                               # cDC
+)
+DotPlot(MP, assay = "RNA", features = paper_mp_markers) + RotatedAxis()
+
+```
+
+### Annotation of MP subclusters
+
+```{r}
+celltype <- c("Tissue Monocyte", "SAMΦ", "Kupffer cell", "Conventional dendritic cell", "Tissue Monocyte", "Tissue Monocyte", "Tissue Monocyte","Conventional dendritic cell","Tissue Monocyte")
+names(celltype) <- levels(MP)
+MP <- RenameIdents(MP, celltype)
+DimPlot(MP, label = TRUE, split.by = "Condition")
+
+```
+
+#### MP subcluster cell composition analysis
+
+Tissue Monocyte and SAMΦ have more cells in cirrhotic tissue.
+
+```{r}
+# Generate frequency table with meaningful column names
+cell_counts <- table(MP@active.ident, MP$Condition)
+cell_counts_df <- as.data.frame(cell_counts)
+
+# Rename default 'Var1' and 'Var2' columns for clarity
+colnames(cell_counts_df)[colnames(cell_counts_df) == "Var1"] <- "CellType"
+colnames(cell_counts_df)[colnames(cell_counts_df) == "Var2"] <- "Condition"
+
+# Initialize and assign total cell counts per condition
+cell_counts_df$TotalCells = 1
+cell_counts_df[cell_counts_df$Condition == "Cirrhotic", ]$TotalCells = 5048
+cell_counts_df[cell_counts_df$Condition == "Healthy", ]$TotalCells = 6178
+
+# Calculate percentage
+cell_counts_df$Percentage = cell_counts_df$Freq / cell_counts_df$TotalCells * 100
+
+# Plot using the updated, clean variable names
+ggplot(cell_counts_df, aes(y = Percentage, x = CellType, fill = Condition)) + 
+  geom_bar(stat = "identity", position = "dodge") + 
+  RotatedAxis() + 
+  xlab("Cell Type") + 
+  ylab("Percentage of Cells") + 
+  guides(fill = guide_legend(title = "Condition"))
+```
+
+#### Part 12: Random Forest Implementation for Important Feature Selection
+
+#### Endothelial Feature Selection
+
+```{r}
+
+# 1. Data Extraction & Reshaping
+DefaultAssay(Endothelial) <- "RNA"
+Endothelial <- ScaleData(Endothelial)
+
+# Extract and transpose the scaled expression data
+endothelial_expr_mat <- Endothelial@assays$RNA$scale.data
+endothelial_scaled_df <- as.data.frame(t(endothelial_expr_mat))
+
+# Print dimensions: rows = cells, columns = 2000 highly variable genes
+dim(endothelial_scaled_df)
+
+# 2. Annotate Metadata & Format Target Variable
+endothelial_scaled_df$cell_type    <- factor(Endothelial$Condition) # Target variable formatted as factor
+endothelial_scaled_df$cell_barcode <- rownames(endothelial_scaled_df)
+
+
+# 3. Data Splitting & Resampling
+set.seed(123) # Recommended for reproducibility
+endothelial_split <- initial_split(endothelial_scaled_df, strata = "cell_type")
+endothelial_train <- training(endothelial_split)
+endothelial_test  <- testing(endothelial_split)
+
+# 10-fold cross-validation
+endothelial_folds <- vfold_cv(endothelial_train, v = 10)
+
+
+# 4. Recipe Configuration (Preprocessing)
+endothelial_recipe <- recipe(formula = cell_type ~ ., data = endothelial_train) %>%
+  update_role(cell_barcode, new_role = "ID") %>%
+  step_zv(all_predictors())
+
+
+# 5. Model Specification & Workflow Pipeline
+endothelial_spec <- rand_forest() %>%
+  set_engine("randomForest", importance = TRUE) %>%
+  set_mode("classification")
+
+endothelial_workflow <- workflow() %>% 
+  add_recipe(endothelial_recipe) %>% 
+  add_model(endothelial_spec)
+
+
+# 6. Model Training
+endothelial_fit <- fit(endothelial_workflow, data = endothelial_train)
+
+
+# 7. Model Evaluation (Confusion Matrix)
+predict(endothelial_fit, new_data = endothelial_test) %>%
+  bind_cols(endothelial_test %>% select(cell_type)) %>%
+  conf_mat(truth = cell_type, estimate = .pred_class)
+
+
+# 8. Feature Importance Visualization
+endothelial_fit %>%
+  extract_fit_parsnip() %>%
+  vip::vip(geom = "col", num_features = 30) + 
+  theme_bw(base_size = 14) +
+  labs(title = "Endothelial Random Forest Variable Importance")
+
+```
+
+#### Mesenchymal Feature Selection
+
+```{r}
+# 1. Data Extraction & Reshaping
+DefaultAssay(Mesenchymal) <- "RNA"
+Mesenchymal <- ScaleData(Mesenchymal)
+
+# Safely extract ONLY the 2000 highly variable features to save memory
+mesenchymal_hvgs <- VariableFeatures(Mesenchymal)
+mesenchymal_data_mat <- t(as.matrix(GetAssayData(Mesenchymal, assay = "RNA", slot = "scale.data")[mesenchymal_hvgs, ]))
+
+# Convert to data frame
+mesenchymal_scaled_df <- as.data.frame(mesenchymal_data_mat)
+# Now, every row is a cell with 2000 genes/features/predictors. 
+dim(mesenchymal_scaled_df)
+
+# 2. Annotate Metadata & Format Target Variable
+mesenchymal_scaled_df$cell_type    <- factor(Mesenchymal$Condition) # Target variable formatted as factor
+mesenchymal_scaled_df$cell_barcode <- rownames(mesenchymal_scaled_df)
+
+
+
+set.seed(123) # Recommended for reproducibility
+mesenchymal_split <- initial_split(mesenchymal_scaled_df, strata = "cell_type")
+mesenchymal_train <- training(mesenchymal_split)
+mesenchymal_test  <- testing(mesenchymal_split)
+
+# 10 fold cross validation
+mesenchymal_folds <- vfold_cv(mesenchymal_train, v = 10)
+
+
+# 4. Recipe Configuration (Preprocessing)
+mesenchymal_recipe <- recipe(formula = cell_type ~ ., data = mesenchymal_train) %>%
+  update_role(cell_barcode, new_role = "ID") %>%
+  step_zv(all_predictors())
+
+
+# 5. Model Specification & Workflow Pipeline
+mesenchymal_spec <- rand_forest() %>%
+  set_engine("randomForest", importance = TRUE) %>%
+  set_mode("classification")
+
+mesenchymal_workflow <- workflow() %>% 
+  add_recipe(mesenchymal_recipe) %>% 
+  add_model(mesenchymal_spec)
+
+
+# 6. Model Training
+mesenchymal_fit <- fit(mesenchymal_workflow, data = mesenchymal_train)
+
+
+# 7. Model Evaluation (Confusion Matrix)
+predict(mesenchymal_fit, new_data = mesenchymal_test) %>%
+  bind_cols(mesenchymal_test %>% select(cell_type)) %>%
+  conf_mat(truth = cell_type, estimate = .pred_class)
+
+
+# 8. Feature Importance Visualization
+mesenchymal_fit %>%
+  extract_fit_parsnip() %>%
+  vip::vip(geom = "col", num_features = 30) + 
+  theme_bw(base_size = 14) +
+  labs(title = "Random Forest Variable Importance (Mesenchymal)")
+```
+
+#### Mononuclear Phagocyte (MP) Feature Selection
+
+```{r}
+# 1. Data Extraction & Reshaping
+DefaultAssay(MP) <- "RNA"
+MP <- ScaleData(MP)
+
+# Safely extract ONLY the 2000 highly variable features to save memory
+mp_hvgs <- VariableFeatures(MP)
+mp_data_mat <- t(as.matrix(GetAssayData(MP, assay = "RNA", slot = "scale.data")[mp_hvgs, ]))
+
+# Convert to data frame
+mp_scaled_df <- as.data.frame(mp_data_mat)
+# Now, every row is a cell with 2000 genes/features/predictors. 
+dim(mp_scaled_df)
+
+# 2. Annotate Metadata & Format Target Variable
+mp_scaled_df$cell_type    <- factor(MP$Condition) # Target variable formatted as factor
+mp_scaled_df$cell_barcode <- rownames(mp_scaled_df)
+
+set.seed(123) # Recommended for reproducibility
+mp_split <- initial_split(mp_scaled_df, strata = "cell_type")
+mp_train <- training(mp_split)
+mp_test  <- testing(mp_split)
+
+# 10 fold cross validation
+mp_folds <- vfold_cv(mp_train, v = 10)
+
+
+# 4. Recipe Configuration (Preprocessing)
+mp_recipe <- recipe(formula = cell_type ~ ., data = mp_train) %>%
+  update_role(cell_barcode, new_role = "ID") %>%
+  step_zv(all_predictors())
+
+
+# 5. Model Specification & Workflow Pipeline
+mp_spec <- rand_forest() %>%
+  set_engine("randomForest", importance = TRUE) %>%
+  set_mode("classification")
+
+mp_workflow <- workflow() %>% 
+  add_recipe(mp_recipe) %>% 
+  add_model(mp_spec)
+
+
+# 6. Model Training
+mp_fit <- fit(mp_workflow, data = mp_train)
+
+
+# 7. Model Evaluation (Confusion Matrix)
+predict(mp_fit, new_data = mp_test) %>%
+  bind_cols(mp_test %>% select(cell_type)) %>%
+  conf_mat(truth = cell_type, estimate = .pred_class)
+
+
+# 8. Feature Importance Visualization
+ mp_fit %>%
+  extract_fit_parsnip() %>%
+  vip::vip(geom = "col", num_features = 30) + 
+  theme_bw(base_size = 14) +
+  labs(title = "Random Forest Variable Importance (MP)")
+```
+
+### Part 13: Therapeutic Gene Targets
+
+Identification of Gene targets via intersection of important genes identified by random forest and up-regulated gene differential list
+
+#### Endothelial Cirrhotic Target Genes
+
+```{r}
+
+top_20_features <- endothelial_fit %>%
+  extract_fit_parsnip() %>%
+  vip::vi() %>%             # Returns a tibble with 'Variable' and 'Importance'
+  head(30) %>%              # Takes the top 20 highest importance features
+  pull(Variable)
+
+Endothelial_DEG_up_regulated = FindMarkers(Endothelial,assay = "RNA", group.by = "Condition", ident.1 = "Cirrhotic", ident.2 = "Healthy") %>% filter(avg_log2FC > 0 & p_val_adj < 0.05)
+
+
+intersect(rownames(Endothelial_DEG_up_regulated), top_20_features)
+```
+
+#### Mesenchymal Cirrhotic Target Genes
+
+```{r}
+
+top_20_features_Mesenchymal <- mesenchymal_fit %>%
+  extract_fit_parsnip() %>%
+  vip::vi() %>%             # Returns a tibble with 'Variable' and 'Importance'
+  head(30) %>%              # Takes the top 20 highest importance features
+  pull(Variable)
+
+Mesenchymal_DEG_up_regulated = FindMarkers(Mesenchymal,assay = "RNA", group.by = "Condition", ident.1 = "Cirrhotic", ident.2 = "Healthy") %>% filter(avg_log2FC > 0 & p_val_adj < 0.05)
+
+
+intersect(rownames(Mesenchymal_DEG_up_regulated), top_20_features_Mesenchymal)
+
+```
+
+#### MP Cirrhotic Target Genes
+
+```{r}
+
+top_20_features_MP <- mp_fit %>%
+  extract_fit_parsnip() %>%
+  vip::vi() %>%             # Returns a tibble with 'Variable' and 'Importance'
+  head(30) %>%              # Takes the top 20 highest importance features
+  pull(Variable)
+
+MP_DEG_up_regulated = FindMarkers(MP,assay = "RNA", group.by = "Condition", ident.1 = "Cirrhotic", ident.2 = "Healthy") %>% filter(avg_log2FC > 0 & p_val_adj < 0.05)
+
+
+intersect(rownames(MP_DEG_up_regulated), top_20_features_MP)
+
+```
+
+|     |
+|-----|
+|     |
