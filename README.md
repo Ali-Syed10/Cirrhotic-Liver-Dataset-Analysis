@@ -40,3 +40,9 @@ if (!requireNamespace("scCustomize", quietly = TRUE)) remotes::install_github("s
 
 # DoubletFinder: Computational doublet identification and removal
 if (!requireNamespace("DoubletFinder", quietly = TRUE)) remotes::install_github("chris-mcginnis-ucsf/DoubletFinder")
+
+# 3. Directory Configuration & Data Placement
+Before running the pipeline, set your working directory to the exact local path where your raw expression matrices are located.
+
+setwd("/path/to/your/GSE136103/datafiles/")
+
